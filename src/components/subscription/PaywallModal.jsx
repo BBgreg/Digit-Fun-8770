@@ -3,9 +3,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import SafeIcon from '../../common/SafeIcon';
 import * as FiIcons from 'react-icons/fi';
 
-const { FiStar, FiCheck, FiX, FiCreditCard, FiShield, FiZap, FiTrendingUp } = FiIcons;
+const { FiStar, FiCheck, FiX, FiCreditCard, FiShield, FiZap } = FiIcons;
 
-const PaywallModal = ({ isOpen, onClose, onSubscribe, subscription }) => {
+const PaywallModal = ({ isOpen, onClose, onSubscribe, subscription, gameMode }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -39,11 +39,33 @@ const PaywallModal = ({ isOpen, onClose, onSubscribe, subscription }) => {
     }
   };
 
+  // Get game mode display name
+  const getGameModeDisplayName = (mode) => {
+    const names = {
+      'sequence-riddle': 'Sequence Riddle',
+      'speed-5': 'Speed 5',
+      'word-search': 'Word Search',
+      'odd-one-out': 'Odd One Out'
+    };
+    return names[mode] || mode;
+  };
+
   const features = [
-    { icon: FiZap, title: 'Unlimited Games', description: 'Play all game modes without restrictions' },
-    { icon: FiTrendingUp, title: 'Progress Tracking', description: 'Track your improvement over time' },
-    { icon: FiStar, title: 'All Features', description: 'Access to current and future features' },
-    { icon: FiShield, title: 'Secure & Private', description: 'Your data is always safe and private' }
+    {
+      icon: FiZap,
+      title: 'Unlimited Games',
+      description: 'Play all game modes without restrictions'
+    },
+    {
+      icon: FiStar,
+      title: 'All Features',
+      description: 'Access to current and future features'
+    },
+    {
+      icon: FiShield,
+      title: 'Secure & Private',
+      description: 'Your data is always safe and private'
+    }
   ];
 
   if (!isOpen) return null;
@@ -81,14 +103,44 @@ const PaywallModal = ({ isOpen, onClose, onSubscribe, subscription }) => {
               <SafeIcon icon={FiStar} size={32} className="text-white" />
             </motion.div>
             
-            <h2 className="text-3xl font-bold mb-2">Unlock Unlimited Fun!</h2>
+            <h2 className="text-3xl font-bold mb-2">
+              {gameMode ? `${getGameModeDisplayName(gameMode)} Limit Reached!` : 'Free Trial Ended!'}
+            </h2>
             <p className="text-white text-opacity-90">
-              You've used all {subscription?.free_games_played || 6} free games
+              {gameMode ? 
+                `You've used both free plays for ${getGameModeDisplayName(gameMode)}` : 
+                'Upgrade to continue your memorization journey'
+              }
             </p>
           </div>
 
           {/* Content */}
           <div className="p-8">
+            {/* Current Usage Display */}
+            {subscription && subscription.subscription_status === 'free_trial' && (
+              <div className="mb-6 bg-indigo-50 p-4 rounded-2xl">
+                <h3 className="font-semibold text-indigo-800 mb-2">Your Free Trial Usage:</h3>
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div className="flex justify-between">
+                    <span>Sequence Riddle:</span>
+                    <span className="font-semibold">{subscription.sequence_riddle_uses || 0}/2</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Speed 5:</span>
+                    <span className="font-semibold">{subscription.speed_5_uses || 0}/2</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Word Search:</span>
+                    <span className="font-semibold">{subscription.word_search_uses || 0}/2</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Odd One Out:</span>
+                    <span className="font-semibold">{subscription.odd_one_out_uses || 0}/2</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Pricing */}
             <div className="text-center mb-8">
               <div className="bg-gradient-to-r from-purple-50 to-indigo-50 rounded-2xl p-6 mb-6">

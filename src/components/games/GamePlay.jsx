@@ -13,6 +13,7 @@ const GamePlay = ({ onNavigate, gameMode, targetNumber, contactName, phoneNumber
     if (phoneNumberId) {
       await saveGameResult(phoneNumberId, gameMode, stars, time);
     }
+    
     // Navigate back to dashboard after a short delay
     setTimeout(() => {
       onNavigate('dashboard');

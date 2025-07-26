@@ -7,11 +7,11 @@ import SubscriptionStatus from '../subscription/SubscriptionStatus';
 import PricingModal from '../subscription/PricingModal';
 import * as FiIcons from 'react-icons/fi';
 
-const { FiPlus, FiList, FiLogOut, FiShield, FiTarget, FiPuzzle, FiCircle, FiFilter, FiExternalLink } = FiIcons;
+const { FiPlus, FiList, FiLogOut, FiShield, FiTarget, FiPuzzle, FiCircle, FiFilter, FiExternalLink, FiStar, FiLock } = FiIcons;
 
 const Dashboard = ({ onNavigate }) => {
   const { user, signOut } = useAuth();
-  const { subscription } = useSubscription();
+  const { subscription, userProfile, canPlayGameMode, getRemainingUsesForGameMode } = useSubscription();
   const [showPricingModal, setShowPricingModal] = React.useState(false);
 
   const pricingPlan = {
@@ -37,6 +37,42 @@ const Dashboard = ({ onNavigate }) => {
       throw error;
     }
   };
+
+  // Game modes with their usage tracking
+  const gameModesWithUsage = [
+    {
+      id: 'sequence-riddle',
+      name: 'Sequence Riddle',
+      icon: FiTarget,
+      description: 'Guess the number like a puzzle with color-coded hints',
+      color: 'bg-gradient-to-br from-purple-500 to-pink-500',
+      navTarget: 'number-selection'
+    },
+    {
+      id: 'speed-5',
+      name: 'Speed 5',
+      icon: FiPuzzle,
+      description: 'Type 5 numbers as fast as you can to test your memory',
+      color: 'bg-gradient-to-br from-blue-500 to-cyan-500',
+      navTarget: 'number-selection'
+    },
+    {
+      id: 'word-search',
+      name: 'Word Search',
+      icon: FiCircle,
+      description: 'Find hidden phone numbers in a grid of digits',
+      color: 'bg-gradient-to-br from-green-500 to-emerald-500',
+      navTarget: 'game-play'
+    },
+    {
+      id: 'odd-one-out',
+      name: 'Odd One Out',
+      icon: FiFilter,
+      description: 'Find the fake numbers that don\'t belong in your contacts',
+      color: 'bg-gradient-to-br from-orange-500 to-red-500',
+      navTarget: 'game-play'
+    }
+  ];
 
   return (
     <div className="min-h-screen app-container">
@@ -72,14 +108,14 @@ const Dashboard = ({ onNavigate }) => {
           </div>
         </motion.div>
 
-        {/* Subscription Status */}
+        {/* Enhanced Subscription Status with Profile Data */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
           className="flex justify-center mb-8"
         >
-          <SubscriptionStatus subscription={subscription} />
+          <SubscriptionStatus subscription={subscription} userProfile={userProfile} />
         </motion.div>
 
         {/* App Branding Section */}
@@ -233,140 +269,76 @@ const Dashboard = ({ onNavigate }) => {
           <div className="h-1 w-24 bg-gradient-to-r from-indigo-500 to-purple-500 mx-auto mt-2 rounded-full"></div>
         </motion.div>
 
-        {/* Game Modes Grid */}
+        {/* Game Modes Grid with Usage Tracking */}
         <motion.div
           initial={{ opacity: 0, y: 40 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.6 }}
           className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto mb-12"
         >
-          {/* Sequence Riddle - Direct navigation to game */}
-          <motion.div
-            className="group relative overflow-hidden rounded-3xl shadow-lg cursor-pointer transform transition-all duration-300"
-            style={{
-              background: "linear-gradient(to right, rgba(139,92,246,0.15), rgba(236,72,153,0.15))",
-              padding: "3px" /* This creates the border effect*/
-            }}
-            whileHover={{
-              y: -5,
-              scale: 1.02,
-              boxShadow: "0 15px 30px rgba(139,92,246,0.3)"
-            }}
-            whileTap={{ scale: 0.98 }}
-            onClick={() => onNavigate('number-selection', { gameMode: 'sequence-riddle' })}
-          >
-            <div className="bg-gradient-to-br from-purple-500 to-pink-500 h-full w-full rounded-3xl p-6">
-              <div className="flex items-center gap-4 mb-3">
-                <motion.div
-                  className="w-12 h-12 bg-white bg-opacity-20 backdrop-filter backdrop-blur-lg rounded-xl flex items-center justify-center"
-                  whileHover={{ rotate: 180 }}
-                  transition={{ duration: 0.5 }}
-                >
-                  <SafeIcon icon={FiTarget} size={24} className="text-white" />
-                </motion.div>
-                <h3 className="text-xl font-bold text-white">Sequence Riddle</h3>
-              </div>
-              <p className="text-white text-opacity-90">
-                Guess the number like a puzzle with color-coded hints
-              </p>
-            </div>
-          </motion.div>
+          {gameModesWithUsage.map((game, index) => {
+            const canPlay = canPlayGameMode(game.id);
+            const remainingUses = getRemainingUsesForGameMode(game.id);
+            const isActive = subscription?.subscription_status === 'active';
 
-          {/* Speed 5 - Direct navigation to game (Previously Puzzle) */}
-          <motion.div
-            className="group relative overflow-hidden rounded-3xl shadow-lg cursor-pointer transform transition-all duration-300"
-            style={{
-              background: "linear-gradient(to right, rgba(139,92,246,0.15), rgba(236,72,153,0.15))",
-              padding: "3px" /* This creates the border effect*/
-            }}
-            whileHover={{
-              y: -5,
-              scale: 1.02,
-              boxShadow: "0 15px 30px rgba(139,92,246,0.3)"
-            }}
-            whileTap={{ scale: 0.98 }}
-            onClick={() => onNavigate('number-selection', { gameMode: 'speed-5' })}
-          >
-            <div className="bg-gradient-to-br from-blue-500 to-cyan-500 h-full w-full rounded-3xl p-6">
-              <div className="flex items-center gap-4 mb-3">
-                <motion.div
-                  className="w-12 h-12 bg-white bg-opacity-20 backdrop-filter backdrop-blur-lg rounded-xl flex items-center justify-center"
-                  whileHover={{ rotate: 180 }}
-                  transition={{ duration: 0.5 }}
-                >
-                  <SafeIcon icon={FiPuzzle} size={24} className="text-white" />
-                </motion.div>
-                <h3 className="text-xl font-bold text-white">Speed 5</h3>
-              </div>
-              <p className="text-white text-opacity-90">
-                Type 5 numbers as fast as you can to test your memory
-              </p>
-            </div>
-          </motion.div>
+            return (
+              <motion.div
+                key={game.id}
+                className={`group relative overflow-hidden rounded-3xl shadow-lg cursor-pointer transform transition-all duration-300 ${
+                  !canPlay && !isActive ? 'opacity-60' : ''
+                }`}
+                style={{
+                  background: "linear-gradient(to right, rgba(139,92,246,0.15), rgba(236,72,153,0.15))",
+                  padding: "3px"
+                }}
+                whileHover={{
+                  y: canPlay || isActive ? -5 : 0,
+                  scale: canPlay || isActive ? 1.02 : 1,
+                  boxShadow: canPlay || isActive ? "0 15px 30px rgba(139,92,246,0.3)" : "none"
+                }}
+                whileTap={{ scale: canPlay || isActive ? 0.98 : 1 }}
+                onClick={() => {
+                  if (canPlay || isActive) {
+                    onNavigate(game.navTarget, { gameMode: game.id });
+                  }
+                }}
+              >
+                <div className={`${game.color} h-full w-full rounded-3xl p-6 relative`}>
+                  {/* Lock overlay for used up games */}
+                  {!canPlay && !isActive && (
+                    <div className="absolute inset-0 bg-black bg-opacity-50 rounded-3xl flex items-center justify-center">
+                      <div className="text-center">
+                        <SafeIcon icon={FiLock} size={32} className="text-white mb-2 mx-auto" />
+                        <p className="text-white text-sm font-semibold">Upgrade to Play</p>
+                      </div>
+                    </div>
+                  )}
 
-          {/* Word Search - DIRECT navigation to game screen */}
-          <motion.div
-            className="group relative overflow-hidden rounded-3xl shadow-lg cursor-pointer transform transition-all duration-300"
-            style={{
-              background: "linear-gradient(to right, rgba(139,92,246,0.15), rgba(236,72,153,0.15))",
-              padding: "3px" /* This creates the border effect*/
-            }}
-            whileHover={{
-              y: -5,
-              scale: 1.02,
-              boxShadow: "0 15px 30px rgba(139,92,246,0.3)"
-            }}
-            whileTap={{ scale: 0.98 }}
-            onClick={() => onNavigate('game-play', { gameMode: 'word-search' })}
-          >
-            <div className="bg-gradient-to-br from-green-500 to-emerald-500 h-full w-full rounded-3xl p-6">
-              <div className="flex items-center gap-4 mb-3">
-                <motion.div
-                  className="w-12 h-12 bg-white bg-opacity-20 backdrop-filter backdrop-blur-lg rounded-xl flex items-center justify-center"
-                  whileHover={{ rotate: 180 }}
-                  transition={{ duration: 0.5 }}
-                >
-                  <SafeIcon icon={FiCircle} size={24} className="text-white" />
-                </motion.div>
-                <h3 className="text-xl font-bold text-white">Word Search</h3>
-              </div>
-              <p className="text-white text-opacity-90">
-                Find hidden phone numbers in a grid of digits
-              </p>
-            </div>
-          </motion.div>
-
-          {/* Odd One Out - DIRECT navigation to game */}
-          <motion.div
-            className="group relative overflow-hidden rounded-3xl shadow-lg cursor-pointer transform transition-all duration-300"
-            style={{
-              background: "linear-gradient(to right, rgba(139,92,246,0.15), rgba(236,72,153,0.15))",
-              padding: "3px" /* This creates the border effect*/
-            }}
-            whileHover={{
-              y: -5,
-              scale: 1.02,
-              boxShadow: "0 15px 30px rgba(139,92,246,0.3)"
-            }}
-            whileTap={{ scale: 0.98 }}
-            onClick={() => onNavigate('game-play', { gameMode: 'odd-one-out' })}
-          >
-            <div className="bg-gradient-to-br from-orange-500 to-red-500 h-full w-full rounded-3xl p-6">
-              <div className="flex items-center gap-4 mb-3">
-                <motion.div
-                  className="w-12 h-12 bg-white bg-opacity-20 backdrop-filter backdrop-blur-lg rounded-xl flex items-center justify-center"
-                  whileHover={{ rotate: 180 }}
-                  transition={{ duration: 0.5 }}
-                >
-                  <SafeIcon icon={FiFilter} size={24} className="text-white" />
-                </motion.div>
-                <h3 className="text-xl font-bold text-white">Odd One Out</h3>
-              </div>
-              <p className="text-white text-opacity-90">
-                Find the fake numbers that don't belong in your contacts
-              </p>
-            </div>
-          </motion.div>
+                  <div className="flex items-center gap-4 mb-3">
+                    <motion.div
+                      className="w-12 h-12 bg-white bg-opacity-20 backdrop-filter backdrop-blur-lg rounded-xl flex items-center justify-center"
+                      whileHover={{ rotate: 180 }}
+                      transition={{ duration: 0.5 }}
+                    >
+                      <SafeIcon icon={game.icon} size={24} className="text-white" />
+                    </motion.div>
+                    <div className="flex-1">
+                      <h3 className="text-xl font-bold text-white">{game.name}</h3>
+                      {/* Usage indicator */}
+                      {subscription?.subscription_status === 'free_trial' && (
+                        <div className="text-white text-opacity-80 text-sm">
+                          {isActive ? 'Unlimited' : `${remainingUses}/2 uses left`}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <p className="text-white text-opacity-90">
+                    {game.description}
+                  </p>
+                </div>
+              </motion.div>
+            );
+          })}
         </motion.div>
 
         {/* Subscription CTA for Free Trial Users */}
@@ -397,7 +369,7 @@ const Dashboard = ({ onNavigate }) => {
           </motion.div>
         )}
 
-        {/* NEW: External Apps Button */}
+        {/* External Apps Button */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}

@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import SafeIcon from '../../common/SafeIcon';
 import * as FiIcons from 'react-icons/fi';
 
-const { FiStar, FiCheck, FiX, FiCreditCard, FiShield, FiZap, FiTrendingUp } = FiIcons;
+const { FiStar, FiCheck, FiX, FiCreditCard, FiShield, FiZap } = FiIcons;
 
 const PricingModal = ({ isOpen, onClose, onSubscribe, subscription }) => {
   const [isLoading, setIsLoading] = useState(false);
@@ -40,10 +40,21 @@ const PricingModal = ({ isOpen, onClose, onSubscribe, subscription }) => {
   };
 
   const features = [
-    { icon: FiZap, title: 'Unlimited Games', description: 'Play all game modes without restrictions' },
-    { icon: FiTrendingUp, title: 'Progress Tracking', description: 'Track your improvement over time' },
-    { icon: FiStar, title: 'All Features', description: 'Access to current and future features' },
-    { icon: FiShield, title: 'Secure & Private', description: 'Your data is always safe and private' }
+    {
+      icon: FiZap,
+      title: 'Unlimited Games',
+      description: 'Play all game modes without restrictions'
+    },
+    {
+      icon: FiStar,
+      title: 'All Features',
+      description: 'Access to current and future features'
+    },
+    {
+      icon: FiShield,
+      title: 'Secure & Private',
+      description: 'Your data is always safe and private'
+    }
   ];
 
   if (!isOpen) return null;
@@ -83,7 +94,7 @@ const PricingModal = ({ isOpen, onClose, onSubscribe, subscription }) => {
             
             <h2 className="text-3xl font-bold mb-2">Unlock Unlimited Fun!</h2>
             <p className="text-white text-opacity-90">
-              You've used all {subscription?.free_games_played || 6} free games
+              Get unlimited access to all games
             </p>
           </div>
 
