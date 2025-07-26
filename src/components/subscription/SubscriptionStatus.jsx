@@ -76,14 +76,14 @@ const SubscriptionStatus = ({ subscription, userProfile, className = '' }) => {
           <h3 className="font-semibold text-gray-800">{status.title}</h3>
           <p className="text-sm text-gray-600">{status.subtitle}</p>
           
-          {/* Show detailed usage for free trial users */}
+          {/* FIXED: Show detailed usage for free trial users with correct format */}
           {isTrial && (
             <div className="mt-2 text-xs text-gray-500">
               <div className="grid grid-cols-2 gap-1">
-                <div>Sequence: {usageSummary['sequence-riddle'].remaining}/2</div>
-                <div>Speed 5: {usageSummary['speed-5'].remaining}/2</div>
-                <div>Word Search: {usageSummary['word-search'].remaining}/2</div>
-                <div>Odd One Out: {usageSummary['odd-one-out'].remaining}/2</div>
+                <div>Sequence: {(2 - usageSummary['sequence-riddle'].remaining)}/2</div>
+                <div>Speed 5: {(2 - usageSummary['speed-5'].remaining)}/2</div>
+                <div>Word Search: {(2 - usageSummary['word-search'].remaining)}/2</div>
+                <div>Odd One Out: {(2 - usageSummary['odd-one-out'].remaining)}/2</div>
               </div>
             </div>
           )}

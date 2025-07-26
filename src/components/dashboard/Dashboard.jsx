@@ -11,7 +11,13 @@ const { FiPlus, FiList, FiLogOut, FiShield, FiTarget, FiPuzzle, FiCircle, FiFilt
 
 const Dashboard = ({ onNavigate }) => {
   const { user, signOut } = useAuth();
-  const { subscription, userProfile, canPlayGameMode, getRemainingUsesForGameMode } = useSubscription();
+  const { 
+    subscription, 
+    userProfile, 
+    canPlayGameMode, 
+    getRemainingUsesForGameMode,
+    loading 
+  } = useSubscription();
   const [showPricingModal, setShowPricingModal] = React.useState(false);
 
   const pricingPlan = {
@@ -74,6 +80,18 @@ const Dashboard = ({ onNavigate }) => {
     }
   ];
 
+  // Show loading state if subscription data is still loading
+  if (loading) {
+    return (
+      <div className="min-h-screen app-container flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin h-12 w-12 border-4 border-indigo-200 border-t-indigo-500 rounded-full mx-auto mb-4"></div>
+          <p className="text-indigo-600">Loading your dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen app-container">
       {/* Animated background elements */}
@@ -135,7 +153,7 @@ const Dashboard = ({ onNavigate }) => {
           >
             <span className="text-4xl animate-bounce-slow">📱</span>
           </motion.div>
-
+          
           <h1 className="gradient-text app-title text-5xl font-black mb-4"
             style={{
               background: "linear-gradient(135deg, #9333EA, #4F46E5, #3B82F6)",
@@ -151,7 +169,7 @@ const Dashboard = ({ onNavigate }) => {
           >
             Digit Fun
           </h1>
-
+          
           <p className="gradient-text app-tagline text-xl font-bold"
             style={{
               background: "linear-gradient(135deg, #9333EA, #4F46E5, #3B82F6)",
@@ -186,7 +204,7 @@ const Dashboard = ({ onNavigate }) => {
           >
             {/* Animated background overlay */}
             <div className="absolute inset-0 bg-gradient-to-r from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-
+            
             <div className="relative z-10 flex flex-col items-center text-center">
               <motion.div
                 className="w-20 h-20 bg-white bg-opacity-20 backdrop-filter backdrop-blur-lg rounded-3xl flex items-center justify-center mb-6 shadow-lg"
@@ -195,15 +213,15 @@ const Dashboard = ({ onNavigate }) => {
               >
                 <SafeIcon icon={FiPlus} size={40} className="text-white" />
               </motion.div>
-
+              
               <h3 className="text-3xl font-black text-white mb-4 drop-shadow-lg">
                 Add Number
               </h3>
-
+              
               <p className="text-white text-lg opacity-90 font-medium leading-relaxed">
                 Save a new phone number and start your memorization journey
               </p>
-
+              
               {/* Animated accent */}
               <motion.div
                 className="mt-6 w-16 h-1 bg-white rounded-full opacity-60"
@@ -227,7 +245,7 @@ const Dashboard = ({ onNavigate }) => {
           >
             {/* Animated background overlay */}
             <div className="absolute inset-0 bg-gradient-to-r from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-
+            
             <div className="relative z-10 flex flex-col items-center text-center">
               <motion.div
                 className="w-20 h-20 bg-white bg-opacity-20 backdrop-filter backdrop-blur-lg rounded-3xl flex items-center justify-center mb-6 shadow-lg"
@@ -236,15 +254,15 @@ const Dashboard = ({ onNavigate }) => {
               >
                 <SafeIcon icon={FiList} size={40} className="text-white" />
               </motion.div>
-
+              
               <h3 className="text-3xl font-black text-white mb-4 drop-shadow-lg">
                 My Numbers
               </h3>
-
+              
               <p className="text-white text-lg opacity-90 font-medium leading-relaxed">
                 View, manage, and practice with your saved phone numbers
               </p>
-
+              
               {/* Animated accent */}
               <motion.div
                 className="mt-6 w-16 h-1 bg-white rounded-full opacity-60"
@@ -280,6 +298,7 @@ const Dashboard = ({ onNavigate }) => {
             const canPlay = canPlayGameMode(game.id);
             const remainingUses = getRemainingUsesForGameMode(game.id);
             const isActive = subscription?.subscription_status === 'active';
+            const usedUses = 2 - remainingUses; // Calculate used uses
 
             return (
               <motion.div
@@ -288,13 +307,13 @@ const Dashboard = ({ onNavigate }) => {
                   !canPlay && !isActive ? 'opacity-60' : ''
                 }`}
                 style={{
-                  background: "linear-gradient(to right, rgba(139,92,246,0.15), rgba(236,72,153,0.15))",
+                  background: "linear-gradient(to right, rgba(139, 92, 246, 0.15), rgba(236, 72, 153, 0.15))",
                   padding: "3px"
                 }}
                 whileHover={{
                   y: canPlay || isActive ? -5 : 0,
                   scale: canPlay || isActive ? 1.02 : 1,
-                  boxShadow: canPlay || isActive ? "0 15px 30px rgba(139,92,246,0.3)" : "none"
+                  boxShadow: canPlay || isActive ? "0 15px 30px rgba(139, 92, 246, 0.3)" : "none"
                 }}
                 whileTap={{ scale: canPlay || isActive ? 0.98 : 1 }}
                 onClick={() => {
@@ -322,16 +341,18 @@ const Dashboard = ({ onNavigate }) => {
                     >
                       <SafeIcon icon={game.icon} size={24} className="text-white" />
                     </motion.div>
+                    
                     <div className="flex-1">
                       <h3 className="text-xl font-bold text-white">{game.name}</h3>
-                      {/* Usage indicator */}
+                      {/* FIXED USAGE INDICATOR - Shows used/total format */}
                       {subscription?.subscription_status === 'free_trial' && (
                         <div className="text-white text-opacity-80 text-sm">
-                          {isActive ? 'Unlimited' : `${remainingUses}/2 uses left`}
+                          {isActive ? 'Unlimited' : `${usedUses}/2 plays used`}
                         </div>
                       )}
                     </div>
                   </div>
+                  
                   <p className="text-white text-opacity-90">
                     {game.description}
                   </p>
@@ -355,7 +376,7 @@ const Dashboard = ({ onNavigate }) => {
               whileHover={{
                 scale: 1.05,
                 y: -5,
-                boxShadow: "0 15px 30px rgba(124,58,237,0.3), 0 0 0 1px rgba(255,255,255,0.1)"
+                boxShadow: "0 15px 30px rgba(124, 58, 237, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.1)"
               }}
               whileTap={{ scale: 0.98 }}
             >
@@ -384,7 +405,7 @@ const Dashboard = ({ onNavigate }) => {
             whileHover={{
               scale: 1.05,
               y: -5,
-              boxShadow: "0 15px 30px rgba(124,58,237,0.3), 0 0 0 1px rgba(255,255,255,0.1)"
+              boxShadow: "0 15px 30px rgba(124, 58, 237, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.1)"
             }}
             whileTap={{ scale: 0.98 }}
           >
@@ -410,7 +431,7 @@ const Dashboard = ({ onNavigate }) => {
             ease: "easeInOut"
           }}
         />
-
+        
         <motion.div
           className="absolute top-1/3 right-16 w-6 h-6 bg-gradient-to-r from-blue-400 to-cyan-400 rounded-full opacity-60"
           animate={{
@@ -424,7 +445,7 @@ const Dashboard = ({ onNavigate }) => {
             delay: 1
           }}
         />
-
+        
         <motion.div
           className="absolute bottom-1/4 left-1/4 w-4 h-4 bg-gradient-to-r from-emerald-400 to-teal-400 rounded-full opacity-60"
           animate={{
