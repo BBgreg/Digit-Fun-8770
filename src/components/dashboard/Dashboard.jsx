@@ -4,12 +4,12 @@ import {useAuth} from '../../contexts/AuthContext';
 import SafeIcon from '../../common/SafeIcon';
 import * as FiIcons from 'react-icons/fi';
 
-const {FiPlus, FiList, FiLogOut, FiShield, FiTarget, FiPuzzle, FiCircle, FiFilter} = FiIcons;
+const {FiPlus,FiList,FiLogOut,FiShield,FiTarget,FiPuzzle,FiCircle,FiFilter,FiExternalLink}=FiIcons;
 
-const Dashboard = ({onNavigate}) => {
-  const {user, signOut} = useAuth();
+const Dashboard=({onNavigate})=> {
+  const {user,signOut}=useAuth();
 
-  const handleSignOut = async () => {
+  const handleSignOut=async ()=> {
     await signOut();
   };
 
@@ -25,8 +25,8 @@ const Dashboard = ({onNavigate}) => {
       <div className="relative z-10 max-w-6xl mx-auto p-6">
         {/* Header with User Info - Right Aligned */}
         <motion.div
-          initial={{opacity: 0, y: -20}}
-          animate={{opacity: 1, y: 0}}
+          initial={{opacity: 0,y: -20}}
+          animate={{opacity: 1,y: 0}}
           className="flex justify-end items-center mb-8"
         >
           <div className="flex items-center gap-4">
@@ -39,7 +39,7 @@ const Dashboard = ({onNavigate}) => {
             <motion.button
               onClick={handleSignOut}
               className="p-3 bg-white bg-opacity-80 backdrop-filter backdrop-blur-lg rounded-2xl shadow-lg hover:shadow-xl transition-all text-indigo-600 hover:text-indigo-800"
-              whileHover={{scale: 1.05, y: -2}}
+              whileHover={{scale: 1.05,y: -2}}
               whileTap={{scale: 0.95}}
             >
               <SafeIcon icon={FiLogOut} size={20} />
@@ -49,27 +49,26 @@ const Dashboard = ({onNavigate}) => {
 
         {/* App Branding Section */}
         <motion.div
-          initial={{opacity: 0, scale: 0.95}}
-          animate={{opacity: 1, scale: 1}}
+          initial={{opacity: 0,scale: 0.95}}
+          animate={{opacity: 1,scale: 1}}
           className="text-center mb-12"
         >
           <motion.div
             className="inline-flex items-center justify-center w-24 h-24 bg-gradient-to-br from-purple-500 via-indigo-500 to-blue-500 rounded-3xl mb-6 shadow-lg"
-            whileHover={{rotate: 10, scale: 1.05, boxShadow: "0 0 30px rgba(147,51,234,0.6), 0 0 60px rgba(59,130,246,0.4)"}}
-            transition={{type: "spring", stiffness: 300, damping: 15}}
+            whileHover={{rotate: 10,scale: 1.05,boxShadow: "0 0 30px rgba(147,51,234,0.6),0 0 60px rgba(59,130,246,0.4)"}}
+            transition={{type: "spring",stiffness: 300,damping: 15}}
           >
             <span className="text-4xl animate-bounce-slow">📱</span>
           </motion.div>
-
           <h1
             className="gradient-text app-title text-5xl font-black mb-4"
-            style={{background: "linear-gradient(135deg, #9333EA, #4F46E5, #3B82F6)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text", textShadow: "0 0 20px rgba(147,51,234,0.5)", fontFamily: "'Fredoka', sans-serif", letterSpacing: "-0.02em", lineHeight: "1.3", paddingBottom: "0.1em"}}
+            style={{background: "linear-gradient(135deg,#9333EA,#4F46E5,#3B82F6)",WebkitBackgroundClip: "text",WebkitTextFillColor: "transparent",backgroundClip: "text",textShadow: "0 0 20px rgba(147,51,234,0.5)",fontFamily: "'Fredoka',sans-serif",letterSpacing: "-0.02em",lineHeight: "1.3",paddingBottom: "0.1em"}}
           >
             Digit Fun
           </h1>
           <p
             className="gradient-text app-tagline text-xl font-bold"
-            style={{background: "linear-gradient(135deg, #9333EA, #4F46E5, #3B82F6)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text", textShadow: "0 0 10px rgba(147,51,234,0.3)", fontFamily: "'Nunito', sans-serif"}}
+            style={{background: "linear-gradient(135deg,#9333EA,#4F46E5,#3B82F6)",WebkitBackgroundClip: "text",WebkitTextFillColor: "transparent",backgroundClip: "text",textShadow: "0 0 10px rgba(147,51,234,0.3)",fontFamily: "'Nunito',sans-serif"}}
           >
             Memorize phone numbers with a little fun
           </p>
@@ -77,17 +76,17 @@ const Dashboard = ({onNavigate}) => {
 
         {/* Enhanced Core Action Buttons - Larger and More Prominent */}
         <motion.div
-          initial={{opacity: 0, y: 40}}
-          animate={{opacity: 1, y: 0}}
+          initial={{opacity: 0,y: 40}}
+          animate={{opacity: 1,y: 0}}
           transition={{delay: 0.3}}
           className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto mb-12"
         >
           {/* Add Number - Enhanced */}
           <motion.div
             className="group relative overflow-hidden bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 p-10 rounded-3xl shadow-2xl cursor-pointer transform transition-all duration-300"
-            whileHover={{y: -8, scale: 1.02, boxShadow: "0 25px 50px rgba(147,51,234,0.4), 0 0 0 1px rgba(255,255,255,0.1)"}}
+            whileHover={{y: -8,scale: 1.02,boxShadow: "0 25px 50px rgba(147,51,234,0.4),0 0 0 1px rgba(255,255,255,0.1)"}}
             whileTap={{scale: 0.98}}
-            onClick={() => onNavigate('add-number')}
+            onClick={()=> onNavigate('add-number')}
           >
             {/* Animated background overlay */}
             <div className="absolute inset-0 bg-gradient-to-r from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
@@ -110,7 +109,7 @@ const Dashboard = ({onNavigate}) => {
                 className="mt-6 w-16 h-1 bg-white rounded-full opacity-60"
                 initial={{width: 0}}
                 animate={{width: 64}}
-                transition={{delay: 0.5, duration: 0.8}}
+                transition={{delay: 0.5,duration: 0.8}}
               />
             </div>
           </motion.div>
@@ -118,9 +117,9 @@ const Dashboard = ({onNavigate}) => {
           {/* My Numbers - Enhanced */}
           <motion.div
             className="group relative overflow-hidden bg-gradient-to-br from-emerald-500 via-teal-500 to-cyan-500 p-10 rounded-3xl shadow-2xl cursor-pointer transform transition-all duration-300"
-            whileHover={{y: -8, scale: 1.02, boxShadow: "0 25px 50px rgba(20,184,166,0.4), 0 0 0 1px rgba(255,255,255,0.1)"}}
+            whileHover={{y: -8,scale: 1.02,boxShadow: "0 25px 50px rgba(20,184,166,0.4),0 0 0 1px rgba(255,255,255,0.1)"}}
             whileTap={{scale: 0.98}}
-            onClick={() => onNavigate('number-list')}
+            onClick={()=> onNavigate('number-list')}
           >
             {/* Animated background overlay */}
             <div className="absolute inset-0 bg-gradient-to-r from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
@@ -136,14 +135,14 @@ const Dashboard = ({onNavigate}) => {
                 My Numbers
               </h3>
               <p className="text-white text-lg opacity-90 font-medium leading-relaxed">
-                View, manage, and practice with your saved phone numbers
+                View,manage,and practice with your saved phone numbers
               </p>
               {/* Animated accent */}
               <motion.div
                 className="mt-6 w-16 h-1 bg-white rounded-full opacity-60"
                 initial={{width: 0}}
                 animate={{width: 64}}
-                transition={{delay: 0.7, duration: 0.8}}
+                transition={{delay: 0.7,duration: 0.8}}
               />
             </div>
           </motion.div>
@@ -151,8 +150,8 @@ const Dashboard = ({onNavigate}) => {
 
         {/* Game Modes Section Title */}
         <motion.div
-          initial={{opacity: 0, y: 20}}
-          animate={{opacity: 1, y: 0}}
+          initial={{opacity: 0,y: 20}}
+          animate={{opacity: 1,y: 0}}
           transition={{delay: 0.5}}
           className="text-center mb-8"
         >
@@ -164,18 +163,18 @@ const Dashboard = ({onNavigate}) => {
 
         {/* Game Modes Grid */}
         <motion.div
-          initial={{opacity: 0, y: 40}}
-          animate={{opacity: 1, y: 0}}
+          initial={{opacity: 0,y: 40}}
+          animate={{opacity: 1,y: 0}}
           transition={{delay: 0.6}}
           className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto mb-12"
         >
           {/* Sequence Riddle - Direct navigation to game */}
           <motion.div
             className="group relative overflow-hidden rounded-3xl shadow-lg cursor-pointer transform transition-all duration-300"
-            style={{background: "linear-gradient(to right, rgba(139,92,246,0.15), rgba(236,72,153,0.15))", padding: "3px" /* This creates the border effect*/}}
-            whileHover={{y: -5, scale: 1.02, boxShadow: "0 15px 30px rgba(139,92,246,0.3)"}}
+            style={{background: "linear-gradient(to right,rgba(139,92,246,0.15),rgba(236,72,153,0.15))",padding: "3px" /* This creates the border effect*/}}
+            whileHover={{y: -5,scale: 1.02,boxShadow: "0 15px 30px rgba(139,92,246,0.3)"}}
             whileTap={{scale: 0.98}}
-            onClick={() => onNavigate('number-selection', {gameMode: 'sequence-riddle'})}
+            onClick={()=> onNavigate('number-selection',{gameMode: 'sequence-riddle'})}
           >
             <div className="bg-gradient-to-br from-purple-500 to-pink-500 h-full w-full rounded-3xl p-6">
               <div className="flex items-center gap-4 mb-3">
@@ -197,10 +196,10 @@ const Dashboard = ({onNavigate}) => {
           {/* Speed 5 - Direct navigation to game (Previously Puzzle) */}
           <motion.div
             className="group relative overflow-hidden rounded-3xl shadow-lg cursor-pointer transform transition-all duration-300"
-            style={{background: "linear-gradient(to right, rgba(139,92,246,0.15), rgba(236,72,153,0.15))", padding: "3px" /* This creates the border effect*/}}
-            whileHover={{y: -5, scale: 1.02, boxShadow: "0 15px 30px rgba(139,92,246,0.3)"}}
+            style={{background: "linear-gradient(to right,rgba(139,92,246,0.15),rgba(236,72,153,0.15))",padding: "3px" /* This creates the border effect*/}}
+            whileHover={{y: -5,scale: 1.02,boxShadow: "0 15px 30px rgba(139,92,246,0.3)"}}
             whileTap={{scale: 0.98}}
-            onClick={() => onNavigate('number-selection', {gameMode: 'speed-5'})}
+            onClick={()=> onNavigate('number-selection',{gameMode: 'speed-5'})}
           >
             <div className="bg-gradient-to-br from-blue-500 to-cyan-500 h-full w-full rounded-3xl p-6">
               <div className="flex items-center gap-4 mb-3">
@@ -222,10 +221,10 @@ const Dashboard = ({onNavigate}) => {
           {/* Word Search - DIRECT navigation to game screen */}
           <motion.div
             className="group relative overflow-hidden rounded-3xl shadow-lg cursor-pointer transform transition-all duration-300"
-            style={{background: "linear-gradient(to right, rgba(139,92,246,0.15), rgba(236,72,153,0.15))", padding: "3px" /* This creates the border effect*/}}
-            whileHover={{y: -5, scale: 1.02, boxShadow: "0 15px 30px rgba(139,92,246,0.3)"}}
+            style={{background: "linear-gradient(to right,rgba(139,92,246,0.15),rgba(236,72,153,0.15))",padding: "3px" /* This creates the border effect*/}}
+            whileHover={{y: -5,scale: 1.02,boxShadow: "0 15px 30px rgba(139,92,246,0.3)"}}
             whileTap={{scale: 0.98}}
-            onClick={() => onNavigate('game-play', {gameMode: 'word-search'})}
+            onClick={()=> onNavigate('game-play',{gameMode: 'word-search'})}
           >
             <div className="bg-gradient-to-br from-green-500 to-emerald-500 h-full w-full rounded-3xl p-6">
               <div className="flex items-center gap-4 mb-3">
@@ -247,10 +246,10 @@ const Dashboard = ({onNavigate}) => {
           {/* Odd One Out - DIRECT navigation to game */}
           <motion.div
             className="group relative overflow-hidden rounded-3xl shadow-lg cursor-pointer transform transition-all duration-300"
-            style={{background: "linear-gradient(to right, rgba(139,92,246,0.15), rgba(236,72,153,0.15))", padding: "3px" /* This creates the border effect*/}}
-            whileHover={{y: -5, scale: 1.02, boxShadow: "0 15px 30px rgba(139,92,246,0.3)"}}
+            style={{background: "linear-gradient(to right,rgba(139,92,246,0.15),rgba(236,72,153,0.15))",padding: "3px" /* This creates the border effect*/}}
+            whileHover={{y: -5,scale: 1.02,boxShadow: "0 15px 30px rgba(139,92,246,0.3)"}}
             whileTap={{scale: 0.98}}
-            onClick={() => onNavigate('game-play', {gameMode: 'odd-one-out'})}
+            onClick={()=> onNavigate('game-play',{gameMode: 'odd-one-out'})}
           >
             <div className="bg-gradient-to-br from-orange-500 to-red-500 h-full w-full rounded-3xl p-6">
               <div className="flex items-center gap-4 mb-3">
@@ -270,12 +269,40 @@ const Dashboard = ({onNavigate}) => {
           </motion.div>
         </motion.div>
 
+        {/* NEW: External Apps Button */}
+        <motion.div
+          initial={{opacity: 0, y: 20}}
+          animate={{opacity: 1, y: 0}}
+          transition={{delay: 0.7}}
+          className="flex justify-center mb-10"
+        >
+          <motion.a
+            href="https://ask4appco.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="group relative overflow-hidden bg-gradient-to-r from-violet-500 via-indigo-500 to-blue-500 px-8 py-4 rounded-2xl shadow-lg hover:shadow-xl transition-all"
+            whileHover={{
+              scale: 1.05, 
+              y: -5,
+              boxShadow: "0 15px 30px rgba(124, 58, 237, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.1)"
+            }}
+            whileTap={{scale: 0.98}}
+          >
+            <div className="absolute inset-0 bg-gradient-to-r from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+            <div className="relative flex items-center justify-center gap-3 text-white font-semibold">
+              <SafeIcon icon={FiExternalLink} size={20} className="text-white" />
+              <span className="text-lg">Check out all my other apps on ask4appco.com</span>
+            </div>
+            <div className="absolute inset-0 -z-10 rounded-2xl bg-white/10 opacity-0 blur-xl transition-opacity duration-500 group-hover:opacity-100"></div>
+          </motion.a>
+        </motion.div>
+
         {/* Fun Floating Elements for Extra Hip Factor */}
         <motion.div
           className="absolute top-1/4 left-10 w-8 h-8 bg-gradient-to-r from-pink-400 to-purple-400 rounded-full opacity-60"
           animate={{
-            y: [0, -20, 0],
-            rotate: [0, 180, 360],
+            y: [0,-20,0],
+            rotate: [0,180,360],
           }}
           transition={{
             duration: 4,
@@ -283,12 +310,11 @@ const Dashboard = ({onNavigate}) => {
             ease: "easeInOut"
           }}
         />
-
         <motion.div
           className="absolute top-1/3 right-16 w-6 h-6 bg-gradient-to-r from-blue-400 to-cyan-400 rounded-full opacity-60"
           animate={{
-            y: [0, 15, 0],
-            rotate: [0, -180, -360],
+            y: [0,15,0],
+            rotate: [0,-180,-360],
           }}
           transition={{
             duration: 3,
@@ -297,13 +323,12 @@ const Dashboard = ({onNavigate}) => {
             delay: 1
           }}
         />
-
         <motion.div
           className="absolute bottom-1/4 left-1/4 w-4 h-4 bg-gradient-to-r from-emerald-400 to-teal-400 rounded-full opacity-60"
           animate={{
-            y: [0, -10, 0],
-            x: [0, 10, 0],
-            rotate: [0, 90, 180],
+            y: [0,-10,0],
+            x: [0,10,0],
+            rotate: [0,90,180],
           }}
           transition={{
             duration: 5,
