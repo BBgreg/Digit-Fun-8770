@@ -13,7 +13,7 @@ import './App.css';
 
 function App() {
   const [currentScreen, setCurrentScreen] = useState('global-loading'); // 🚀 Start with global loading
-  const [isAuthReady, setIsAuthReady] = useState(false); // 🚀 NEW: Track when auth is ready
+  const [isAuthReady, setIsAuthReady] = useState(false); // 🚀 Track when auth is ready
   const [gameParams, setGameParams] = useState({});
   const [editingNumber, setEditingNumber] = useState(null);
   const { user, navigateToScreen, clearNavigationTarget, loading, isAuthReady: authContextReady } = useAuth();
@@ -26,41 +26,45 @@ function App() {
     }
   }, [authContextReady, isAuthReady]);
 
-  // 🚀🚀🚀 CRITICAL: PRECISE NAVIGATION LOGIC WITH GLOBAL LOADING STATE
+  // 🚀🚀🚀 CRITICAL: REFINED NAVIGATION LOGIC WITH PROPER SCREEN TRANSITIONS
   useEffect(() => {
     console.log('🔥 App: Navigation effect triggered (Final Attempt)', {
       currentScreen,
       user: user?.id || 'none',
       navigateToScreen,
-      isAuthReady,
-      authContextReady,
-      loading
+      isAuthReady
     });
 
-    // 1. Global Loading State: If auth state is not yet ready, show a loading screen/spinner
+    // 1. If authentication state is NOT yet ready, ensure global loading screen is shown.
     if (!isAuthReady) {
-      console.log('⏳ App: Auth not ready yet, showing global loading screen');
-      setCurrentScreen('global-loading'); // Introduce a 'global-loading' screen state
-      return; // Exit useEffect early, wait for auth to be ready
+      if (currentScreen !== 'global-loading') {
+        console.log('⏳ App: Auth not ready yet, showing global loading screen');
+        setCurrentScreen('global-loading');
+      }
+      return; // Exit early, wait for auth to be ready
     }
 
-    // 2. Auth Ready: Handle navigation based on user presence
-    if (user) { // User is authenticated
-      if (navigateToScreen) {
-        // Prioritize explicit navigation targets (e.g., after email confirmation redirect)
-        console.log('🚀🚀🚀 App: IMMEDIATE NAVIGATION: Explicit target from AuthContext to:', navigateToScreen);
-        setCurrentScreen(navigateToScreen);
-        clearNavigationTarget();
-      } else if (currentScreen === 'auth' || currentScreen === 'global-loading') {
+    // 2. If authentication state IS ready:
+    //    a. Handle explicit navigation targets (e.g., after email confirmation redirect)
+    if (navigateToScreen) {
+      console.log('🚀🚀🚀 App: IMMEDIATE NAVIGATION: Explicit target from AuthContext to:', navigateToScreen);
+      setCurrentScreen(navigateToScreen);
+      clearNavigationTarget();
+      return; // Exit after handling explicit navigation
+    }
+
+    //    b. Determine default screen based on user authentication status
+    if (user) { // User is authenticated AND isAuthReady is true
+      if (currentScreen === 'auth' || currentScreen === 'global-loading') {
         // If user just authenticated OR was on global loading screen, default to dashboard
         console.log('🚀 App: User authenticated, defaulting to dashboard');
         setCurrentScreen('dashboard');
       }
-      // If user is authenticated and already on a non-auth/non-loading screen, do nothing
-    } else { // User is NOT authenticated (and isAuthReady is true)
+      // If user is authenticated and already on a non-auth/non-loading screen, do nothing (stay on current screen)
+    } else { // User is NOT authenticated AND isAuthReady is true
       console.log('🔒 App: User not authenticated, ensuring auth screen is shown');
-      if (currentScreen !== 'auth') {
-        setCurrentScreen('auth'); // Force back to authentication screen
+      if (currentScreen !== 'auth') { // Only set to 'auth' if not already there
+        setCurrentScreen('auth');
       }
     }
 
@@ -110,8 +114,8 @@ function App() {
           </motion.div>
         )}
 
-        {/* Auth Screen - only shown if auth is ready AND no user */}
-        {isAuthReady && currentScreen === 'auth' && !user && (
+        {/* Auth Screen - only shown if currentScreen is 'auth' AND auth is ready AND no user */}
+        {currentScreen === 'auth' && isAuthReady && !user && (
           <motion.div
             key="auth"
             initial={{ opacity: 0 }}
@@ -122,8 +126,8 @@ function App() {
           </motion.div>
         )}
 
-        {/* Dashboard Screen - only shown if auth is ready AND user exists AND currentScreen is dashboard */}
-        {isAuthReady && currentScreen === 'dashboard' && user && (
+        {/* Dashboard Screen - only shown if currentScreen is 'dashboard' AND auth is ready AND user exists */}
+        {currentScreen === 'dashboard' && isAuthReady && user && (
           <motion.div
             key="dashboard"
             initial={{ opacity: 0 }}
@@ -134,8 +138,8 @@ function App() {
           </motion.div>
         )}
 
-        {/* Number List Screen - auth ready, user exists, correct screen */}
-        {isAuthReady && currentScreen === 'number-list' && user && (
+        {/* Number List Screen */}
+        {currentScreen === 'number-list' && isAuthReady && user && (
           <motion.div
             key="number-list"
             initial={{ opacity: 0 }}
@@ -146,8 +150,8 @@ function App() {
           </motion.div>
         )}
 
-        {/* Number Form Screen - auth ready, user exists, correct screen */}
-        {isAuthReady && currentScreen === 'number-form' && user && (
+        {/* Number Form Screen */}
+        {currentScreen === 'number-form' && isAuthReady && user && (
           <motion.div
             key="number-form"
             initial={{ opacity: 0 }}
@@ -158,8 +162,8 @@ function App() {
           </motion.div>
         )}
 
-        {/* Game Selection Screen - auth ready, user exists, correct screen */}
-        {isAuthReady && currentScreen === 'game-selection' && user && (
+        {/* Game Selection Screen */}
+        {currentScreen === 'game-selection' && isAuthReady && user && (
           <motion.div
             key="game-selection"
             initial={{ opacity: 0 }}
@@ -170,8 +174,8 @@ function App() {
           </motion.div>
         )}
 
-        {/* Number Selection Screen - auth ready, user exists, correct screen */}
-        {isAuthReady && currentScreen === 'number-selection' && user && (
+        {/* Number Selection Screen */}
+        {currentScreen === 'number-selection' && isAuthReady && user && (
           <motion.div
             key="number-selection"
             initial={{ opacity: 0 }}
@@ -182,8 +186,8 @@ function App() {
           </motion.div>
         )}
 
-        {/* Game Play Screen - auth ready, user exists, correct screen */}
-        {isAuthReady && currentScreen === 'game-play' && user && (
+        {/* Game Play Screen */}
+        {currentScreen === 'game-play' && isAuthReady && user && (
           <motion.div
             key="game-play"
             initial={{ opacity: 0 }}

@@ -46,6 +46,21 @@ const LoadingScreen = () => {
           Digit Fun
         </h1>
 
+        {/* App Tagline */}
+        <p 
+          className="gradient-text app-tagline text-xl font-bold mb-8"
+          style={{
+            background: "linear-gradient(135deg, #9333EA, #4F46E5, #3B82F6)",
+            WebkitBackgroundClip: "text",
+            WebkitTextFillColor: "transparent",
+            backgroundClip: "text",
+            textShadow: "0 0 10px rgba(147,51,234,0.3)",
+            fontFamily: "'Nunito', sans-serif"
+          }}
+        >
+          Memorize phone numbers with a little fun
+        </p>
+
         {/* Loading Spinner */}
         <motion.div
           className="w-16 h-16 border-4 border-indigo-200 border-t-indigo-500 rounded-full mx-auto mb-6"
@@ -55,12 +70,16 @@ const LoadingScreen = () => {
 
         {/* Loading Text */}
         <motion.p
-          className="text-indigo-600 text-xl font-semibold"
+          className="text-indigo-600 text-xl font-semibold mb-4"
           animate={{ opacity: [0.5, 1, 0.5] }}
           transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
         >
-          Loading your experience...
+          Checking authentication...
         </motion.p>
+
+        <p className="text-indigo-500 text-lg">
+          Setting up your personalized experience
+        </p>
 
         {/* Animated dots */}
         <div className="flex justify-center mt-4 space-x-2">
