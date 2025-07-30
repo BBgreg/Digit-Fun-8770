@@ -46,14 +46,14 @@ export const AuthProvider = ({ children }) => {
     // Listen for changes on auth state (logged in, signed out, etc.)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log('Auth state changed:', event, session?.user?.id || 'no user');
+        console.log('🔥 Auth state changed:', event, session?.user?.id || 'no user');
         
         if (session?.user) {
           setUser(session.user);
           
-          // 🚀 CRITICAL: Auto-navigate to dashboard on successful sign-in
+          // 🚀 CRITICAL: IMMEDIATE DASHBOARD NAVIGATION ON SUCCESSFUL SIGN-IN
           if (event === 'SIGNED_IN') {
-            console.log('🚀 SIGNED_IN event detected, navigating to dashboard');
+            console.log('🚀🚀🚀 SIGNED_IN event detected - IMMEDIATE navigation to dashboard');
             setNavigateToScreen('dashboard');
           }
         } else {
@@ -93,10 +93,11 @@ export const AuthProvider = ({ children }) => {
     }
   }
 
+  // 🚀 CRITICAL: ENHANCED SIGN-IN WITH GUARANTEED NAVIGATION
   const signIn = async (email, password) => {
     try {
       setError(null)
-      console.log('AuthContext: Attempting sign-in...');
+      console.log('🔥 AuthContext: Starting sign-in process...');
       
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
@@ -104,25 +105,25 @@ export const AuthProvider = ({ children }) => {
       })
 
       if (error) {
-        console.error('AuthContext: Sign-in error:', error);
+        console.error('🚨 AuthContext: Sign-in error:', error);
         return { success: false, error }
       }
 
       if (data?.user) {
-        console.log('AuthContext: Sign-in successful for user:', data.user.id);
+        console.log('🚀 AuthContext: Sign-in SUCCESS for user:', data.user.id);
         setUser(data.user);
         
-        // 🚀 CRITICAL: Set navigation target immediately on successful sign-in
-        console.log('AuthContext: Setting navigation target to dashboard');
+        // 🚀🚀🚀 CRITICAL: IMMEDIATE NAVIGATION TARGET SET
+        console.log('🚀🚀🚀 AuthContext: Setting IMMEDIATE navigation to dashboard');
         setNavigateToScreen('dashboard');
         
         return { success: true, data, user: data.user }
       } else {
-        console.error('AuthContext: No user data returned from sign-in');
+        console.error('🚨 AuthContext: No user data returned from sign-in');
         return { success: false, error: { message: 'No user data received' } }
       }
     } catch (err) {
-      console.error('AuthContext: Unexpected sign-in error:', err);
+      console.error('🚨 AuthContext: Unexpected sign-in error:', err);
       setError(err.message)
       return { success: false, error: err }
     }
@@ -145,15 +146,9 @@ export const AuthProvider = ({ children }) => {
     }
   }
 
-  // Explicit function to navigate to dashboard with high priority
-  const navigateToDashboard = () => {
-    console.log('AuthContext: Explicit navigation to dashboard requested');
-    setNavigateToScreen('dashboard');
-  }
-
   // Clear navigation target after it's been processed
   const clearNavigationTarget = () => {
-    console.log('AuthContext: Clearing navigation target');
+    console.log('🔥 AuthContext: Clearing navigation target');
     setNavigateToScreen(null);
   }
 
@@ -164,7 +159,6 @@ export const AuthProvider = ({ children }) => {
     signUp,
     signIn,
     signOut,
-    navigateToDashboard,
     navigateToScreen,
     clearNavigationTarget
   }

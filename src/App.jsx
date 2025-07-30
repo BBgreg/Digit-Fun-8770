@@ -16,9 +16,9 @@ function App() {
   const [editingNumber, setEditingNumber] = useState(null);
   const { user, navigateToScreen, clearNavigationTarget } = useAuth();
 
-  // 🚀 CRITICAL: Enhanced navigation effect for immediate dashboard redirect
+  // 🚀🚀🚀 CRITICAL: ULTRA-ENHANCED NAVIGATION FOR IMMEDIATE DASHBOARD REDIRECT
   useEffect(() => {
-    console.log('App: Navigation effect triggered', {
+    console.log('🔥 App: Navigation effect triggered', {
       user: user?.id || 'none',
       navigateToScreen,
       currentScreen
@@ -27,8 +27,8 @@ function App() {
     if (user) {
       // User is authenticated
       if (navigateToScreen) {
-        // 🚀 IMMEDIATE NAVIGATION: Explicit navigation target from AuthContext
-        console.log(`🚀 App: Navigating to explicit target: ${navigateToScreen}`);
+        // 🚀🚀🚀 IMMEDIATE NAVIGATION: Explicit navigation target from AuthContext
+        console.log(`🚀🚀🚀 App: IMMEDIATE navigation to: ${navigateToScreen}`);
         setCurrentScreen(navigateToScreen);
         clearNavigationTarget(); // Clear after processing
       } else if (currentScreen === 'auth') {
@@ -61,14 +61,15 @@ function App() {
     }
   };
 
-  // Debug logging for state changes
+  // Enhanced debug logging for state changes
   useEffect(() => {
-    console.log('App: State update -', {
+    console.log('🔥 App: State update -', {
       currentScreen,
       userAuthenticated: !!user,
-      userId: user?.id || 'none'
+      userId: user?.id || 'none',
+      navigateToScreen
     });
-  }, [currentScreen, user]);
+  }, [currentScreen, user, navigateToScreen]);
 
   return (
     <div className="app">

@@ -14,10 +14,11 @@ const LoginForm = ({ onToggleMode }) => {
   const [error, setError] = useState('');
   const { signIn } = useAuth();
 
+  // 🚀 CRITICAL: EXCRUCIATINGLY PRECISE SIGN-IN BUTTON LOGIC
   const handleSignInClick = async (e) => {
     e.preventDefault();
     
-    // Clear any previous errors
+    // Clear any previous errors immediately
     setError('');
     
     // Validate inputs before proceeding
@@ -31,29 +32,42 @@ const LoginForm = ({ onToggleMode }) => {
       return;
     }
     
-    // Show loading indicator immediately
+    // 🔥 STEP 1: IMMEDIATELY display loading indicator
+    console.log('🔥 STEP 1: Displaying loading indicator');
     setLoading(true);
     
     try {
-      console.log('Attempting sign-in for:', email);
+      console.log('🔥 STEP 2: Attempting Supabase sign-in for:', email);
       
-      // Execute Supabase Sign-In
+      // 🔥 STEP 2: Execute Supabase Sign-In Operation
       const result = await signIn(email, password);
       
+      console.log('🔥 STEP 3: Sign-in result received:', { 
+        success: result.success, 
+        hasUser: !!result.user,
+        hasError: !!result.error 
+      });
+      
       if (result.success && result.user) {
-        // ✅ SUCCESSFUL SIGN-IN - IMMEDIATE NAVIGATION TRIGGER
-        console.log('✅ Sign-in successful for user:', result.user.id);
-        console.log('🚀 Navigation will be handled automatically by AuthContext');
+        // 🚀 CRITICAL SUCCESS PATH: IMMEDIATE NAVIGATION GUARANTEE
+        console.log('🚀 SUCCESS: Sign-in successful for user:', result.user.id);
+        console.log('🚀 IMMEDIATE NAVIGATION: AuthContext will handle dashboard navigation');
         
-        // Note: The AuthContext will automatically handle navigation to dashboard
-        // via the navigateToScreen state and App.jsx useEffect
-        // Loading state will be cleared when component unmounts due to navigation
-        
-      } else if (result.error) {
-        // ❌ FAILED SIGN-IN - Show error and stay on form
+        // 🔥 STEP 3a: Hide loading indicator immediately
         setLoading(false);
         
-        // Handle specific error types with user-friendly messages
+        // 🚀 NOTE: The AuthContext automatically triggers navigation to dashboard
+        // via the navigateToScreen state and App.jsx useEffect
+        // This ensures IMMEDIATE and FORCEFUL navigation to dashboard
+        
+      } else if (result.error) {
+        // 🚨 CRITICAL FAILURE PATH: Show error and stay on form
+        console.log('🚨 FAILURE: Sign-in failed with error:', result.error);
+        
+        // 🔥 STEP 3b: Hide loading indicator immediately
+        setLoading(false);
+        
+        // 🔥 STEP 3c: Display user-friendly error message
         let errorMessage = 'Sign-in failed. Please try again later.';
         
         if (result.error.message) {
@@ -61,14 +75,10 @@ const LoginForm = ({ onToggleMode }) => {
           
           if (errorMsg.includes('invalid login credentials') || 
               errorMsg.includes('invalid password') || 
-              errorMsg.includes('user not found') || 
-              errorMsg.includes('email not confirmed')) {
-            
-            if (errorMsg.includes('email not confirmed')) {
-              errorMessage = 'Please confirm your email to log in.';
-            } else {
-              errorMessage = 'Invalid email or password. Please try again.';
-            }
+              errorMsg.includes('user not found')) {
+            errorMessage = 'Invalid email or password. Please try again.';
+          } else if (errorMsg.includes('email not confirmed')) {
+            errorMessage = 'Please confirm your email to log in.';
           } else if (errorMsg.includes('too many requests')) {
             errorMessage = 'Too many sign-in attempts. Please wait a moment and try again.';
           } else if (errorMsg.includes('network') || errorMsg.includes('connection')) {
@@ -77,14 +87,21 @@ const LoginForm = ({ onToggleMode }) => {
         }
         
         setError(errorMessage);
-        console.error('Sign-in failed:', result.error);
+        console.error('🚨 Displaying error to user:', errorMessage);
+        
+        // 🚨 CRITICAL: DO NOT NAVIGATE on failed sign-in
+      } else {
+        // 🚨 Unexpected case: no user and no error
+        console.error('🚨 UNEXPECTED: No user data and no error returned');
+        setLoading(false);
+        setError('An unexpected error occurred. Please try again later.');
       }
       
     } catch (err) {
-      // Handle unexpected errors
+      // 🚨 Handle unexpected exceptions
+      console.error('🚨 EXCEPTION during sign-in:', err);
       setLoading(false);
       setError('An unexpected error occurred. Please try again later.');
-      console.error('Unexpected sign-in error:', err);
     }
   };
 
@@ -149,6 +166,7 @@ const LoginForm = ({ onToggleMode }) => {
           </motion.div>
         )}
 
+        {/* 🚀 CRITICAL: THE SIGN IN BUTTON WITH PRECISE NAVIGATION LOGIC */}
         <motion.button
           type="submit"
           disabled={loading}
