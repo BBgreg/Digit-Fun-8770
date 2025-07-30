@@ -35,15 +35,6 @@ function App() {
       isAuthReady
     });
 
-    // 1. If authentication state is NOT yet ready, ensure global loading screen is shown.
-    if (!isAuthReady) {
-      if (currentScreen !== 'global-loading') {
-        console.log('⏳ App: Auth not ready yet, showing global loading screen');
-        setCurrentScreen('global-loading');
-      }
-      return; // Exit early, wait for auth to be ready
-    }
-
     // 2. If authentication state IS ready:
     //    a. Handle explicit navigation targets (e.g., after email confirmation redirect)
     if (navigateToScreen) {
