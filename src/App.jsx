@@ -16,7 +16,7 @@ function App() {
   const [editingNumber, setEditingNumber] = useState(null);
   const { user, navigateToScreen, clearNavigationTarget, loading } = useAuth();
 
-  // 🚀🚀🚀 CRITICAL: MODIFIED NAVIGATION LOGIC TO PREVENT BLANK SCREEN
+  // 🚀🚀🚀 CRITICAL: PRECISE NAVIGATION LOGIC TO FIX SIGN-IN ISSUE
   useEffect(() => {
     console.log('🔥 App: Navigation effect triggered', {
       currentScreen,
@@ -25,29 +25,29 @@ function App() {
       loading
     });
 
-    // Check if authentication is still in progress or user is not yet resolved
-    // If user is null and not explicitly navigating, stay on 'auth' screen
-    if (!user && currentScreen !== 'auth') {
-      console.log('🔒 App: No authenticated user, redirecting to auth screen');
-      setCurrentScreen('auth'); // Force back to auth if no user and not already there
-      return; // Exit early if not authenticated
+    // Condition 1: If an explicit navigation target is set (e.g., from AuthContext after signup confirmation)
+    if (navigateToScreen) {
+      setCurrentScreen(navigateToScreen);
+      clearNavigationTarget(); // Clear the target after processing
+      return; // Exit useEffect after handling explicit navigation
     }
 
-    // If user is authenticated
-    if (user) {
-      if (navigateToScreen) {
-        console.log('🚀🚀🚀 App: IMMEDIATE NAVIGATION: Explicit navigation target from AuthContext to:', navigateToScreen);
-        setCurrentScreen(navigateToScreen);
-        clearNavigationTarget();
-      } else if (currentScreen === 'auth') {
-        // User is authenticated AND was just on the auth screen, so navigate to dashboard
-        console.log('🚀 App: User authenticated, defaulting to dashboard');
-        setCurrentScreen('dashboard');
-      }
-      // If user is authenticated and already on a non-auth screen, do nothing (stay on current screen)
+    // Condition 2: If user is authenticated AND current screen is 'auth' (meaning they just logged in)
+    if (user && currentScreen === 'auth') {
+      setCurrentScreen('dashboard'); // Navigate directly to dashboard
+      return; // Exit useEffect after handling dashboard navigation
     }
-    // If user is null and currentScreen is 'auth', do nothing (stay on auth screen)
-  }, [user, navigateToScreen, currentScreen, clearNavigationTarget, loading]);
+
+    // Condition 3: If user is NOT authenticated AND current screen is NOT 'auth' (e.g., tried to access dashboard directly)
+    if (!user && currentScreen !== 'auth') {
+      setCurrentScreen('auth'); // Force back to authentication screen
+      return; // Exit useEffect after handling unauthenticated state
+    }
+
+    // Condition 4: Default case - if user is authenticated and already on a non-auth screen, or if no user and already on auth screen
+    // No action needed for these states, simply let currentScreen remain as is.
+
+  }, [user, navigateToScreen, currentScreen, clearNavigationTarget]);
 
   const handleNavigation = (screen, params = {}) => {
     console.log('App: Manual navigation to:', screen, params);
