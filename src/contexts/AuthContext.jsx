@@ -14,6 +14,7 @@ export const useAuth = () => {
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [isAuthReady, setIsAuthReady] = useState(false) // 🚀 NEW: Track when auth state is resolved
   const [error, setError] = useState(null)
   const [navigateToScreen, setNavigateToScreen] = useState(null)
 
@@ -21,39 +22,41 @@ export const AuthProvider = ({ children }) => {
     // Check active sessions and sets the user
     const getSession = async () => {
       try {
-        console.log('Checking for active session...');
+        console.log('🔍 AuthContext: Checking for active session...');
         const { data: { session }, error } = await supabase.auth.getSession()
         
         if (error) {
-          console.error('Session error:', error);
+          console.error('❌ AuthContext: Session error:', error);
           throw error;
         }
-        
-        console.log('Session data:', session ? 'Session found' : 'No active session');
+
+        console.log('📊 AuthContext: Session data:', session ? 'Session found' : 'No active session');
         if (session?.user) {
           setUser(session.user);
         }
       } catch (err) {
-        console.error('Error getting session:', err);
+        console.error('❌ AuthContext: Error getting session:', err);
         setError(err.message);
       } finally {
         setLoading(false);
+        // 🚀 CRITICAL: Mark auth as ready after initial session check
+        console.log('✅ AuthContext: Initial auth check complete - marking as ready');
+        setIsAuthReady(true);
       }
     }
 
     getSession()
 
     // Listen for changes on auth state (logged in, signed out, etc.)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+    const { data: { subscription } } = supabase.auth.onAuthStateChanged(
       async (event, session) => {
-        console.log('🔥 Auth state changed:', event, session?.user?.id || 'no user');
+        console.log('🔥 AuthContext: Auth state changed:', event, session?.user?.id || 'no user');
         
         if (session?.user) {
           setUser(session.user);
-          
           // 🚀 CRITICAL: IMMEDIATE DASHBOARD NAVIGATION ON SUCCESSFUL SIGN-IN
           if (event === 'SIGNED_IN') {
-            console.log('🚀🚀🚀 SIGNED_IN event detected - IMMEDIATE navigation to dashboard');
+            console.log('🚀🚀🚀 AuthContext: SIGNED_IN event detected - IMMEDIATE navigation to dashboard');
             setNavigateToScreen('dashboard');
           }
         } else {
@@ -61,12 +64,18 @@ export const AuthProvider = ({ children }) => {
           // Clear navigation target when user signs out
           setNavigateToScreen(null);
         }
+        
         setLoading(false);
+        // 🚀 CRITICAL: Ensure auth is marked as ready on state changes
+        if (!isAuthReady) {
+          console.log('✅ AuthContext: Auth state change - marking as ready');
+          setIsAuthReady(true);
+        }
       }
     )
 
     return () => subscription.unsubscribe()
-  }, [])
+  }, [isAuthReady])
 
   const signUp = async (email, password) => {
     try {
@@ -84,10 +93,10 @@ export const AuthProvider = ({ children }) => {
 
       if (error) throw error
 
-      console.log('Sign up successful:', data?.user?.id);
+      console.log('✅ AuthContext: Sign up successful:', data?.user?.id);
       return { success: true, data }
     } catch (err) {
-      console.error('Sign up error:', err);
+      console.error('❌ AuthContext: Sign up error:', err);
       setError(err.message)
       return { success: false, error: err }
     }
@@ -98,7 +107,7 @@ export const AuthProvider = ({ children }) => {
     try {
       setError(null)
       console.log('🔥 AuthContext: Starting sign-in process...');
-      
+
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -134,13 +143,13 @@ export const AuthProvider = ({ children }) => {
       setError(null)
       const { error } = await supabase.auth.signOut()
       if (error) throw error
-      
+
       setUser(null);
       setNavigateToScreen(null);
-      console.log('Sign out successful');
+      console.log('✅ AuthContext: Sign out successful');
       return { success: true }
     } catch (err) {
-      console.error('Sign out error:', err);
+      console.error('❌ AuthContext: Sign out error:', err);
       setError(err.message)
       return { success: false, error: err.message }
     }
@@ -155,6 +164,7 @@ export const AuthProvider = ({ children }) => {
   const value = {
     user,
     loading,
+    isAuthReady, // 🚀 NEW: Export isAuthReady state
     error,
     signUp,
     signIn,
@@ -165,7 +175,7 @@ export const AuthProvider = ({ children }) => {
 
   return (
     <AuthContext.Provider value={value}>
-      {!loading && children}
+      {children}
     </AuthContext.Provider>
   )
 }

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useAuth } from '../../contexts/AuthContext';
 import { useSubscription } from '../../hooks/useSubscription';
@@ -11,14 +11,9 @@ const { FiPlus, FiList, FiLogOut, FiShield, FiTarget, FiPuzzle, FiCircle, FiFilt
 
 const Dashboard = ({ onNavigate }) => {
   const { user, signOut } = useAuth();
-  const { 
-    subscription, 
-    userProfile, 
-    canPlayGameMode, 
-    getRemainingUsesForGameMode,
-    loading 
-  } = useSubscription();
-  const [showPricingModal, setShowPricingModal] = React.useState(false);
+  const { subscription, userProfile, canPlayGameMode, getRemainingUsesForGameMode, loading } = useSubscription();
+  const [showPricingModal, setShowPricingModal] = useState(false);
+  const [dashboardReady, setDashboardReady] = useState(false); // 🚀 NEW: Dashboard internal loading state
 
   const pricingPlan = {
     name: "Unlimited",
@@ -29,17 +24,26 @@ const Dashboard = ({ onNavigate }) => {
     interval: "month"
   };
 
+  // 🚀 CRITICAL: Dashboard internal loading management
+  useEffect(() => {
+    // Mark dashboard as ready after subscription data is loaded
+    if (!loading && subscription !== null) {
+      console.log('✅ Dashboard: Subscription data loaded, marking dashboard as ready');
+      setDashboardReady(true);
+    }
+  }, [loading, subscription]);
+
   const handleSignOut = async () => {
     await signOut();
   };
 
   const handleSubscribe = async () => {
     try {
-      console.log('Opening Stripe payment link for user:', user.id);
+      console.log('💳 Dashboard: Opening Stripe payment link for user:', user.id);
       // Open Stripe payment link in new tab
       window.open(pricingPlan.paymentLink, '_blank');
     } catch (error) {
-      console.error('Subscription error:', error);
+      console.error('❌ Dashboard: Subscription error:', error);
       throw error;
     }
   };
@@ -80,18 +84,27 @@ const Dashboard = ({ onNavigate }) => {
     }
   ];
 
-  // Show loading state if subscription data is still loading
-  if (loading) {
+  // 🚀 CRITICAL: Show dashboard loading state if subscription data is still loading
+  if (loading || !dashboardReady) {
     return (
       <div className="min-h-screen app-container flex items-center justify-center">
-        <div className="text-center">
+        {/* Animated background elements */}
+        <div className="absolute top-0 left-0 w-full h-full overflow-hidden z-0">
+          <div className="absolute top-0 left-0 w-96 h-96 bg-gradient-to-br from-purple-500 to-indigo-500 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob"></div>
+          <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-indigo-500 to-blue-500 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob animation-delay-2000"></div>
+          <div className="absolute bottom-0 left-20 w-96 h-96 bg-gradient-to-br from-blue-400 to-sky-500 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob animation-delay-4000"></div>
+        </div>
+        
+        <div className="text-center relative z-10">
           <div className="animate-spin h-12 w-12 border-4 border-indigo-200 border-t-indigo-500 rounded-full mx-auto mb-4"></div>
-          <p className="text-indigo-600">Loading your dashboard...</p>
+          <p className="text-indigo-600 text-xl font-semibold">Loading your dashboard...</p>
+          <p className="text-indigo-500 text-sm mt-2">Setting up your personalized experience</p>
         </div>
       </div>
     );
   }
 
+  // 🚀 CRITICAL: Dashboard content - only renders when fully ready
   return (
     <div className="min-h-screen app-container">
       {/* Animated background elements */}
@@ -153,8 +166,9 @@ const Dashboard = ({ onNavigate }) => {
           >
             <span className="text-4xl animate-bounce-slow">📱</span>
           </motion.div>
-          
-          <h1 className="gradient-text app-title text-5xl font-black mb-4"
+
+          <h1 
+            className="gradient-text app-title text-5xl font-black mb-4"
             style={{
               background: "linear-gradient(135deg, #9333EA, #4F46E5, #3B82F6)",
               WebkitBackgroundClip: "text",
@@ -169,8 +183,9 @@ const Dashboard = ({ onNavigate }) => {
           >
             Digit Fun
           </h1>
-          
-          <p className="gradient-text app-tagline text-xl font-bold"
+
+          <p 
+            className="gradient-text app-tagline text-xl font-bold"
             style={{
               background: "linear-gradient(135deg, #9333EA, #4F46E5, #3B82F6)",
               WebkitBackgroundClip: "text",
@@ -307,15 +322,17 @@ const Dashboard = ({ onNavigate }) => {
                   !canPlay && !isActive ? 'opacity-60' : ''
                 }`}
                 style={{
-                  background: "linear-gradient(to right, rgba(139, 92, 246, 0.15), rgba(236, 72, 153, 0.15))",
+                  background: "linear-gradient(to right, rgba(139,92,246,0.15), rgba(236,72,153,0.15))",
                   padding: "3px"
                 }}
                 whileHover={{
                   y: canPlay || isActive ? -5 : 0,
                   scale: canPlay || isActive ? 1.02 : 1,
-                  boxShadow: canPlay || isActive ? "0 15px 30px rgba(139, 92, 246, 0.3)" : "none"
+                  boxShadow: canPlay || isActive ? "0 15px 30px rgba(139,92,246,0.3)" : "none"
                 }}
-                whileTap={{ scale: canPlay || isActive ? 0.98 : 1 }}
+                whileTap={{
+                  scale: canPlay || isActive ? 0.98 : 1
+                }}
                 onClick={() => {
                   if (canPlay || isActive) {
                     onNavigate(game.navTarget, { gameMode: game.id });
@@ -341,7 +358,6 @@ const Dashboard = ({ onNavigate }) => {
                     >
                       <SafeIcon icon={game.icon} size={24} className="text-white" />
                     </motion.div>
-                    
                     <div className="flex-1">
                       <h3 className="text-xl font-bold text-white">{game.name}</h3>
                       {/* FIXED USAGE INDICATOR - Shows used/total format */}
@@ -352,7 +368,6 @@ const Dashboard = ({ onNavigate }) => {
                       )}
                     </div>
                   </div>
-                  
                   <p className="text-white text-opacity-90">
                     {game.description}
                   </p>
@@ -376,7 +391,7 @@ const Dashboard = ({ onNavigate }) => {
               whileHover={{
                 scale: 1.05,
                 y: -5,
-                boxShadow: "0 15px 30px rgba(124, 58, 237, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.1)"
+                boxShadow: "0 15px 30px rgba(124,58,237,0.3), 0 0 0 1px rgba(255,255,255,0.1)"
               }}
               whileTap={{ scale: 0.98 }}
             >
@@ -405,7 +420,7 @@ const Dashboard = ({ onNavigate }) => {
             whileHover={{
               scale: 1.05,
               y: -5,
-              boxShadow: "0 15px 30px rgba(124, 58, 237, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.1)"
+              boxShadow: "0 15px 30px rgba(124,58,237,0.3), 0 0 0 1px rgba(255,255,255,0.1)"
             }}
             whileTap={{ scale: 0.98 }}
           >
@@ -431,7 +446,6 @@ const Dashboard = ({ onNavigate }) => {
             ease: "easeInOut"
           }}
         />
-        
         <motion.div
           className="absolute top-1/3 right-16 w-6 h-6 bg-gradient-to-r from-blue-400 to-cyan-400 rounded-full opacity-60"
           animate={{
@@ -445,7 +459,6 @@ const Dashboard = ({ onNavigate }) => {
             delay: 1
           }}
         />
-        
         <motion.div
           className="absolute bottom-1/4 left-1/4 w-4 h-4 bg-gradient-to-r from-emerald-400 to-teal-400 rounded-full opacity-60"
           animate={{

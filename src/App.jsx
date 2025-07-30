@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import AuthScreen from './components/auth/AuthScreen.jsx';
+import LoadingScreen from './components/LoadingScreen.jsx';
 import Dashboard from './components/dashboard/Dashboard';
 import NumbersList from './components/dashboard/NumbersList';
 import NumberForm from './components/forms/NumberForm';
@@ -11,46 +12,62 @@ import GamePlay from './components/games/GamePlay';
 import './App.css';
 
 function App() {
-  const [currentScreen, setCurrentScreen] = useState('auth');
+  const [currentScreen, setCurrentScreen] = useState('global-loading'); // 🚀 Start with global loading
+  const [isAuthReady, setIsAuthReady] = useState(false); // 🚀 NEW: Track when auth is ready
   const [gameParams, setGameParams] = useState({});
   const [editingNumber, setEditingNumber] = useState(null);
-  const { user, navigateToScreen, clearNavigationTarget, loading } = useAuth();
+  const { user, navigateToScreen, clearNavigationTarget, loading, isAuthReady: authContextReady } = useAuth();
 
-  // 🚀🚀🚀 CRITICAL: PRECISE NAVIGATION LOGIC TO FIX SIGN-IN ISSUE
+  // 🚀 CRITICAL: Sync isAuthReady from AuthContext
   useEffect(() => {
-    console.log('🔥 App: Navigation effect triggered', {
+    if (authContextReady && !isAuthReady) {
+      console.log('✅ App: Auth context is ready, updating local state');
+      setIsAuthReady(true);
+    }
+  }, [authContextReady, isAuthReady]);
+
+  // 🚀🚀🚀 CRITICAL: PRECISE NAVIGATION LOGIC WITH GLOBAL LOADING STATE
+  useEffect(() => {
+    console.log('🔥 App: Navigation effect triggered (Final Attempt)', {
       currentScreen,
       user: user?.id || 'none',
       navigateToScreen,
+      isAuthReady,
+      authContextReady,
       loading
     });
 
-    // Condition 1: If an explicit navigation target is set (e.g., from AuthContext after signup confirmation)
-    if (navigateToScreen) {
-      setCurrentScreen(navigateToScreen);
-      clearNavigationTarget(); // Clear the target after processing
-      return; // Exit useEffect after handling explicit navigation
+    // 1. Global Loading State: If auth state is not yet ready, show a loading screen/spinner
+    if (!isAuthReady) {
+      console.log('⏳ App: Auth not ready yet, showing global loading screen');
+      setCurrentScreen('global-loading'); // Introduce a 'global-loading' screen state
+      return; // Exit useEffect early, wait for auth to be ready
     }
 
-    // Condition 2: If user is authenticated AND current screen is 'auth' (meaning they just logged in)
-    if (user && currentScreen === 'auth') {
-      setCurrentScreen('dashboard'); // Navigate directly to dashboard
-      return; // Exit useEffect after handling dashboard navigation
+    // 2. Auth Ready: Handle navigation based on user presence
+    if (user) { // User is authenticated
+      if (navigateToScreen) {
+        // Prioritize explicit navigation targets (e.g., after email confirmation redirect)
+        console.log('🚀🚀🚀 App: IMMEDIATE NAVIGATION: Explicit target from AuthContext to:', navigateToScreen);
+        setCurrentScreen(navigateToScreen);
+        clearNavigationTarget();
+      } else if (currentScreen === 'auth' || currentScreen === 'global-loading') {
+        // If user just authenticated OR was on global loading screen, default to dashboard
+        console.log('🚀 App: User authenticated, defaulting to dashboard');
+        setCurrentScreen('dashboard');
+      }
+      // If user is authenticated and already on a non-auth/non-loading screen, do nothing
+    } else { // User is NOT authenticated (and isAuthReady is true)
+      console.log('🔒 App: User not authenticated, ensuring auth screen is shown');
+      if (currentScreen !== 'auth') {
+        setCurrentScreen('auth'); // Force back to authentication screen
+      }
     }
 
-    // Condition 3: If user is NOT authenticated AND current screen is NOT 'auth' (e.g., tried to access dashboard directly)
-    if (!user && currentScreen !== 'auth') {
-      setCurrentScreen('auth'); // Force back to authentication screen
-      return; // Exit useEffect after handling unauthenticated state
-    }
-
-    // Condition 4: Default case - if user is authenticated and already on a non-auth screen, or if no user and already on auth screen
-    // No action needed for these states, simply let currentScreen remain as is.
-
-  }, [user, navigateToScreen, currentScreen, clearNavigationTarget]);
+  }, [user, navigateToScreen, currentScreen, clearNavigationTarget, isAuthReady]);
 
   const handleNavigation = (screen, params = {}) => {
-    console.log('App: Manual navigation to:', screen, params);
+    console.log('🧭 App: Manual navigation to:', screen, params);
     setGameParams(params);
     
     if (screen === 'edit-number') {
@@ -72,14 +89,29 @@ function App() {
       userAuthenticated: !!user,
       userId: user?.id || 'none',
       navigateToScreen,
+      isAuthReady,
+      authContextReady,
       authLoading: loading
     });
-  }, [currentScreen, user, navigateToScreen, loading]);
+  }, [currentScreen, user, navigateToScreen, isAuthReady, authContextReady, loading]);
 
   return (
     <div className="app">
       <AnimatePresence mode="wait">
-        {currentScreen === 'auth' && !user && (
+        {/* Global Loading Screen - displayed while authentication state is being determined */}
+        {currentScreen === 'global-loading' && (
+          <motion.div
+            key="global-loading-screen"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <LoadingScreen />
+          </motion.div>
+        )}
+
+        {/* Auth Screen - only shown if auth is ready AND no user */}
+        {isAuthReady && currentScreen === 'auth' && !user && (
           <motion.div
             key="auth"
             initial={{ opacity: 0 }}
@@ -90,8 +122,8 @@ function App() {
           </motion.div>
         )}
 
-        {/* CRITICAL: Only render Dashboard when user is FULLY available */}
-        {currentScreen === 'dashboard' && user && !loading && (
+        {/* Dashboard Screen - only shown if auth is ready AND user exists AND currentScreen is dashboard */}
+        {isAuthReady && currentScreen === 'dashboard' && user && (
           <motion.div
             key="dashboard"
             initial={{ opacity: 0 }}
@@ -102,7 +134,8 @@ function App() {
           </motion.div>
         )}
 
-        {currentScreen === 'number-list' && user && (
+        {/* Number List Screen - auth ready, user exists, correct screen */}
+        {isAuthReady && currentScreen === 'number-list' && user && (
           <motion.div
             key="number-list"
             initial={{ opacity: 0 }}
@@ -113,7 +146,8 @@ function App() {
           </motion.div>
         )}
 
-        {currentScreen === 'number-form' && user && (
+        {/* Number Form Screen - auth ready, user exists, correct screen */}
+        {isAuthReady && currentScreen === 'number-form' && user && (
           <motion.div
             key="number-form"
             initial={{ opacity: 0 }}
@@ -124,7 +158,8 @@ function App() {
           </motion.div>
         )}
 
-        {currentScreen === 'game-selection' && user && (
+        {/* Game Selection Screen - auth ready, user exists, correct screen */}
+        {isAuthReady && currentScreen === 'game-selection' && user && (
           <motion.div
             key="game-selection"
             initial={{ opacity: 0 }}
@@ -135,7 +170,8 @@ function App() {
           </motion.div>
         )}
 
-        {currentScreen === 'number-selection' && user && (
+        {/* Number Selection Screen - auth ready, user exists, correct screen */}
+        {isAuthReady && currentScreen === 'number-selection' && user && (
           <motion.div
             key="number-selection"
             initial={{ opacity: 0 }}
@@ -146,7 +182,8 @@ function App() {
           </motion.div>
         )}
 
-        {currentScreen === 'game-play' && user && (
+        {/* Game Play Screen - auth ready, user exists, correct screen */}
+        {isAuthReady && currentScreen === 'game-play' && user && (
           <motion.div
             key="game-play"
             initial={{ opacity: 0 }}
@@ -161,22 +198,6 @@ function App() {
               phoneNumberId={gameParams.phoneNumberId}
               phoneNumbers={gameParams.phoneNumbers}
             />
-          </motion.div>
-        )}
-
-        {/* Loading indicator when transitioning to Dashboard */}
-        {currentScreen === 'dashboard' && user && loading && (
-          <motion.div
-            key="loading-dashboard"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="min-h-screen flex items-center justify-center"
-          >
-            <div className="text-center">
-              <div className="animate-spin h-12 w-12 border-4 border-indigo-200 border-t-indigo-500 rounded-full mx-auto mb-4"></div>
-              <p className="text-indigo-600">Loading your dashboard...</p>
-            </div>
           </motion.div>
         )}
       </AnimatePresence>
