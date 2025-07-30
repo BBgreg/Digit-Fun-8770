@@ -14,36 +14,40 @@ function App() {
   const [currentScreen, setCurrentScreen] = useState('auth');
   const [gameParams, setGameParams] = useState({});
   const [editingNumber, setEditingNumber] = useState(null);
-  const { user, navigateToScreen, clearNavigationTarget } = useAuth();
+  const { user, navigateToScreen, clearNavigationTarget, loading } = useAuth();
 
-  // 🚀🚀🚀 CRITICAL: ULTRA-ENHANCED NAVIGATION FOR IMMEDIATE DASHBOARD REDIRECT
+  // 🚀🚀🚀 CRITICAL: MODIFIED NAVIGATION LOGIC TO PREVENT BLANK SCREEN
   useEffect(() => {
     console.log('🔥 App: Navigation effect triggered', {
+      currentScreen,
       user: user?.id || 'none',
       navigateToScreen,
-      currentScreen
+      loading
     });
 
+    // Check if authentication is still in progress or user is not yet resolved
+    // If user is null and not explicitly navigating, stay on 'auth' screen
+    if (!user && currentScreen !== 'auth') {
+      console.log('🔒 App: No authenticated user, redirecting to auth screen');
+      setCurrentScreen('auth'); // Force back to auth if no user and not already there
+      return; // Exit early if not authenticated
+    }
+
+    // If user is authenticated
     if (user) {
-      // User is authenticated
       if (navigateToScreen) {
-        // 🚀🚀🚀 IMMEDIATE NAVIGATION: Explicit navigation target from AuthContext
-        console.log(`🚀🚀🚀 App: IMMEDIATE navigation to: ${navigateToScreen}`);
+        console.log('🚀🚀🚀 App: IMMEDIATE NAVIGATION: Explicit navigation target from AuthContext to:', navigateToScreen);
         setCurrentScreen(navigateToScreen);
-        clearNavigationTarget(); // Clear after processing
+        clearNavigationTarget();
       } else if (currentScreen === 'auth') {
-        // 🚀 FALLBACK NAVIGATION: Default navigation if still on auth screen
+        // User is authenticated AND was just on the auth screen, so navigate to dashboard
         console.log('🚀 App: User authenticated, defaulting to dashboard');
         setCurrentScreen('dashboard');
       }
-    } else {
-      // User is not authenticated
-      console.log('App: No user, ensuring auth screen is shown');
-      if (currentScreen !== 'auth') {
-        setCurrentScreen('auth');
-      }
+      // If user is authenticated and already on a non-auth screen, do nothing (stay on current screen)
     }
-  }, [user, navigateToScreen, currentScreen, clearNavigationTarget]);
+    // If user is null and currentScreen is 'auth', do nothing (stay on auth screen)
+  }, [user, navigateToScreen, currentScreen, clearNavigationTarget, loading]);
 
   const handleNavigation = (screen, params = {}) => {
     console.log('App: Manual navigation to:', screen, params);
@@ -67,9 +71,10 @@ function App() {
       currentScreen,
       userAuthenticated: !!user,
       userId: user?.id || 'none',
-      navigateToScreen
+      navigateToScreen,
+      authLoading: loading
     });
-  }, [currentScreen, user, navigateToScreen]);
+  }, [currentScreen, user, navigateToScreen, loading]);
 
   return (
     <div className="app">
@@ -85,7 +90,8 @@ function App() {
           </motion.div>
         )}
 
-        {currentScreen === 'dashboard' && user && (
+        {/* CRITICAL: Only render Dashboard when user is FULLY available */}
+        {currentScreen === 'dashboard' && user && !loading && (
           <motion.div
             key="dashboard"
             initial={{ opacity: 0 }}
@@ -155,6 +161,22 @@ function App() {
               phoneNumberId={gameParams.phoneNumberId}
               phoneNumbers={gameParams.phoneNumbers}
             />
+          </motion.div>
+        )}
+
+        {/* Loading indicator when transitioning to Dashboard */}
+        {currentScreen === 'dashboard' && user && loading && (
+          <motion.div
+            key="loading-dashboard"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="min-h-screen flex items-center justify-center"
+          >
+            <div className="text-center">
+              <div className="animate-spin h-12 w-12 border-4 border-indigo-200 border-t-indigo-500 rounded-full mx-auto mb-4"></div>
+              <p className="text-indigo-600">Loading your dashboard...</p>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
