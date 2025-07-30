@@ -12,7 +12,6 @@ const LoginForm = ({ onToggleMode }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-
   const { signIn } = useAuth();
 
   const handleSignInClick = async (e) => {
@@ -31,10 +30,10 @@ const LoginForm = ({ onToggleMode }) => {
       setError('Please enter your password.');
       return;
     }
-
+    
     // Show loading indicator immediately
     setLoading(true);
-
+    
     try {
       console.log('Attempting sign-in for:', email);
       
@@ -42,14 +41,16 @@ const LoginForm = ({ onToggleMode }) => {
       const result = await signIn(email, password);
       
       if (result.success && result.user) {
-        // Successful Sign-In
-        console.log('Sign-in successful for user:', result.user.id);
+        // ✅ SUCCESSFUL SIGN-IN - IMMEDIATE NAVIGATION TRIGGER
+        console.log('✅ Sign-in successful for user:', result.user.id);
+        console.log('🚀 Navigation will be handled automatically by AuthContext');
         
-        // Note: Navigation is handled automatically by the AuthContext
-        // The loading state will be cleared when the component unmounts due to navigation
+        // Note: The AuthContext will automatically handle navigation to dashboard
+        // via the navigateToScreen state and App.jsx useEffect
+        // Loading state will be cleared when component unmounts due to navigation
         
       } else if (result.error) {
-        // Failed Sign-In - Hide loading and show error
+        // ❌ FAILED SIGN-IN - Show error and stay on form
         setLoading(false);
         
         // Handle specific error types with user-friendly messages
@@ -60,7 +61,7 @@ const LoginForm = ({ onToggleMode }) => {
           
           if (errorMsg.includes('invalid login credentials') || 
               errorMsg.includes('invalid password') || 
-              errorMsg.includes('user not found') ||
+              errorMsg.includes('user not found') || 
               errorMsg.includes('email not confirmed')) {
             
             if (errorMsg.includes('email not confirmed')) {

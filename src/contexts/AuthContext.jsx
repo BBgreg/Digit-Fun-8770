@@ -51,9 +51,9 @@ export const AuthProvider = ({ children }) => {
         if (session?.user) {
           setUser(session.user);
           
-          // Auto-navigate to dashboard on successful sign-in
+          // 🚀 CRITICAL: Auto-navigate to dashboard on successful sign-in
           if (event === 'SIGNED_IN') {
-            console.log('SIGNED_IN event detected, navigating to dashboard');
+            console.log('🚀 SIGNED_IN event detected, navigating to dashboard');
             setNavigateToScreen('dashboard');
           }
         } else {
@@ -76,11 +76,14 @@ export const AuthProvider = ({ children }) => {
         password,
         options: {
           emailRedirectTo: window.location.origin,
-          data: { confirmed_at: null }
+          data: {
+            confirmed_at: null
+          }
         }
       })
-      
+
       if (error) throw error
+
       console.log('Sign up successful:', data?.user?.id);
       return { success: true, data }
     } catch (err) {
@@ -99,17 +102,17 @@ export const AuthProvider = ({ children }) => {
         email,
         password,
       })
-      
+
       if (error) {
         console.error('AuthContext: Sign-in error:', error);
         return { success: false, error }
       }
-      
+
       if (data?.user) {
         console.log('AuthContext: Sign-in successful for user:', data.user.id);
         setUser(data.user);
         
-        // Set navigation target immediately on successful sign-in
+        // 🚀 CRITICAL: Set navigation target immediately on successful sign-in
         console.log('AuthContext: Setting navigation target to dashboard');
         setNavigateToScreen('dashboard');
         
@@ -118,7 +121,6 @@ export const AuthProvider = ({ children }) => {
         console.error('AuthContext: No user data returned from sign-in');
         return { success: false, error: { message: 'No user data received' } }
       }
-      
     } catch (err) {
       console.error('AuthContext: Unexpected sign-in error:', err);
       setError(err.message)
@@ -142,13 +144,13 @@ export const AuthProvider = ({ children }) => {
       return { success: false, error: err.message }
     }
   }
-  
+
   // Explicit function to navigate to dashboard with high priority
   const navigateToDashboard = () => {
     console.log('AuthContext: Explicit navigation to dashboard requested');
     setNavigateToScreen('dashboard');
   }
-  
+
   // Clear navigation target after it's been processed
   const clearNavigationTarget = () => {
     console.log('AuthContext: Clearing navigation target');
