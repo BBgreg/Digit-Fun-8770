@@ -189,6 +189,9 @@ const WordSearch = ({ onNavigate, onGameEnd }) => {
     setGameStarted(true);
     setIsGeneratingGrid(true);
     setLoadingMessage('Designing your unique puzzle...');
+    
+    // Use a timeout to allow the UI to update to the loading screen
+    // before the heavy grid generation logic runs.
     setTimeout(() => {
       const result = generateGrid();
       if (result.error) {
@@ -206,7 +209,7 @@ const WordSearch = ({ onNavigate, onGameEnd }) => {
       timerRef.current = setInterval(() => {
         setElapsedTime(Math.floor((Date.now() - now) / 1000));
       }, 1000);
-    }, 50);
+    }, 50); // A small delay is enough for the UI to update.
   };
 
   const isAdjacent = (x1, y1, x2, y2) => Math.abs(x1 - x2) <= 1 && Math.abs(y1 - y2) <= 1;
@@ -239,14 +242,11 @@ const WordSearch = ({ onNavigate, onGameEnd }) => {
   
   const handleCellMouseDown = (e, x, y) => {
     if (gameComplete || isCellFound(x, y)) return;
-    setMouseDownTime(Date.now());
     setMouseDownCell({ x, y });
-    setHasMouseMoved(false);
   };
 
   const handleCellMouseMove = (e, x, y) => {
-    if (mouseDownCell && (mouseDownCell.x !== x || mouseDownCell.y !== y)) {
-      setHasMouseMoved(true);
+    if (mouseDownCell) {
       if (!isDragging) {
         setIsDragging(true);
         const startCellValue = grid[mouseDownCell.y][mouseDownCell.x];
