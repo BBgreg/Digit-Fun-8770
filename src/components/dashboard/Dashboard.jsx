@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { useAuth } from '../../contexts/AuthContext';
-import { useSubscription } from '../../hooks/useSubscription';
-import SafeIcon from '../../common/SafeIcon';
-import SubscriptionStatus from '../subscription/SubscriptionStatus';
-import PricingModal from '../subscription/PricingModal';
+import { useAuth } from '/src/contexts/AuthContext.jsx';
+import { useSubscription } from '/src/hooks/useSubscription.jsx';
+import SafeIcon from '/src/common/SafeIcon.jsx';
+import SubscriptionStatus from '/src/components/subscription/SubscriptionStatus.jsx';
+import PricingModal from '/src/components/subscription/PricingModal.jsx';
 import * as FiIcons from 'react-icons/fi';
 
 const { FiPlus, FiList, FiLogOut, FiShield, FiTarget, FiPuzzle, FiCircle, FiFilter, FiExternalLink, FiStar, FiLock } = FiIcons;
@@ -13,7 +13,7 @@ const Dashboard = ({ onNavigate }) => {
   const { user, signOut } = useAuth();
   const { subscription, userProfile, canPlayGameMode, getRemainingUsesForGameMode, loading } = useSubscription();
   const [showPricingModal, setShowPricingModal] = useState(false);
-  const [dashboardReady, setDashboardReady] = useState(false); // 🚀 NEW: Dashboard internal loading state
+  const [dashboardReady, setDashboardReady] = useState(false);
 
   const pricingPlan = {
     name: "Unlimited",
@@ -24,14 +24,16 @@ const Dashboard = ({ onNavigate }) => {
     interval: "month"
   };
 
-  // 🚀 CRITICAL: Dashboard internal loading management
+  /**
+   * CRITICAL FIX: This effect now marks the dashboard as ready as soon as the
+   * subscription data has finished loading, regardless of whether a subscription exists.
+   */
   useEffect(() => {
-    // Mark dashboard as ready after subscription data is loaded
-    if (!loading && subscription !== null) {
+    if (!loading) {
       console.log('✅ Dashboard: Subscription data loaded, marking dashboard as ready');
       setDashboardReady(true);
     }
-  }, [loading, subscription]);
+  }, [loading]); // The dependency is now just `loading`.
 
   const handleSignOut = async () => {
     await signOut();
@@ -40,7 +42,6 @@ const Dashboard = ({ onNavigate }) => {
   const handleSubscribe = async () => {
     try {
       console.log('💳 Dashboard: Opening Stripe payment link for user:', user.id);
-      // Open Stripe payment link in new tab
       window.open(pricingPlan.paymentLink, '_blank');
     } catch (error) {
       console.error('❌ Dashboard: Subscription error:', error);
@@ -48,7 +49,6 @@ const Dashboard = ({ onNavigate }) => {
     }
   };
 
-  // Game modes with their usage tracking
   const gameModesWithUsage = [
     {
       id: 'sequence-riddle',
@@ -84,11 +84,10 @@ const Dashboard = ({ onNavigate }) => {
     }
   ];
 
-  // 🚀 CRITICAL: Show dashboard loading state if subscription data is still loading
-  if (loading || !dashboardReady) {
+  // Show a loading indicator while the dashboard is waiting for data.
+  if (!dashboardReady) {
     return (
       <div className="min-h-screen app-container flex items-center justify-center">
-        {/* Animated background elements */}
         <div className="absolute top-0 left-0 w-full h-full overflow-hidden z-0">
           <div className="absolute top-0 left-0 w-96 h-96 bg-gradient-to-br from-purple-500 to-indigo-500 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob"></div>
           <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-indigo-500 to-blue-500 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob animation-delay-2000"></div>
@@ -96,7 +95,11 @@ const Dashboard = ({ onNavigate }) => {
         </div>
         
         <div className="text-center relative z-10">
-          <div className="animate-spin h-12 w-12 border-4 border-indigo-200 border-t-indigo-500 rounded-full mx-auto mb-4"></div>
+          <motion.div
+            className="w-16 h-16 border-4 border-indigo-200 border-t-indigo-500 rounded-full mx-auto mb-6"
+            animate={{ rotate: 360 }}
+            transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+          />
           <p className="text-indigo-600 text-xl font-semibold">Loading your dashboard...</p>
           <p className="text-indigo-500 text-sm mt-2">Setting up your personalized experience</p>
         </div>
@@ -104,10 +107,9 @@ const Dashboard = ({ onNavigate }) => {
     );
   }
 
-  // 🚀 CRITICAL: Dashboard content - only renders when fully ready
+  // Render the main dashboard content once it's ready.
   return (
     <div className="min-h-screen app-container">
-      {/* Animated background elements */}
       <div className="absolute top-0 left-0 w-full h-full overflow-hidden z-0">
         <div className="absolute top-0 left-0 w-96 h-96 bg-gradient-to-br from-purple-500 to-indigo-500 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob"></div>
         <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-indigo-500 to-blue-500 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob animation-delay-2000"></div>
@@ -115,7 +117,7 @@ const Dashboard = ({ onNavigate }) => {
       </div>
 
       <div className="relative z-10 max-w-6xl mx-auto p-6">
-        {/* Header with User Info - Right Aligned */}
+        {/* Header with User Info */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -139,7 +141,7 @@ const Dashboard = ({ onNavigate }) => {
           </div>
         </motion.div>
 
-        {/* Enhanced Subscription Status with Profile Data */}
+        {/* Subscription Status */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -149,7 +151,7 @@ const Dashboard = ({ onNavigate }) => {
           <SubscriptionStatus subscription={subscription} userProfile={userProfile} />
         </motion.div>
 
-        {/* App Branding Section */}
+        {/* App Branding */}
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -166,7 +168,6 @@ const Dashboard = ({ onNavigate }) => {
           >
             <span className="text-4xl animate-bounce-slow">📱</span>
           </motion.div>
-
           <h1 
             className="gradient-text app-title text-5xl font-black mb-4"
             style={{
@@ -176,14 +177,10 @@ const Dashboard = ({ onNavigate }) => {
               backgroundClip: "text",
               textShadow: "0 0 20px rgba(147,51,234,0.5)",
               fontFamily: "'Fredoka', sans-serif",
-              letterSpacing: "-0.02em",
-              lineHeight: "1.3",
-              paddingBottom: "0.1em"
             }}
           >
             Digit Fun
           </h1>
-
           <p 
             className="gradient-text app-tagline text-xl font-bold"
             style={{
@@ -199,14 +196,14 @@ const Dashboard = ({ onNavigate }) => {
           </p>
         </motion.div>
 
-        {/* Enhanced Core Action Buttons - Larger and More Prominent */}
+        {/* Core Action Buttons */}
         <motion.div
           initial={{ opacity: 0, y: 40 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
           className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto mb-12"
         >
-          {/* Add Number - Enhanced */}
+          {/* Add Number */}
           <motion.div
             className="group relative overflow-hidden bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 p-10 rounded-3xl shadow-2xl cursor-pointer transform transition-all duration-300"
             whileHover={{
@@ -217,9 +214,7 @@ const Dashboard = ({ onNavigate }) => {
             whileTap={{ scale: 0.98 }}
             onClick={() => onNavigate('add-number')}
           >
-            {/* Animated background overlay */}
             <div className="absolute inset-0 bg-gradient-to-r from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-            
             <div className="relative z-10 flex flex-col items-center text-center">
               <motion.div
                 className="w-20 h-20 bg-white bg-opacity-20 backdrop-filter backdrop-blur-lg rounded-3xl flex items-center justify-center mb-6 shadow-lg"
@@ -228,16 +223,12 @@ const Dashboard = ({ onNavigate }) => {
               >
                 <SafeIcon icon={FiPlus} size={40} className="text-white" />
               </motion.div>
-              
               <h3 className="text-3xl font-black text-white mb-4 drop-shadow-lg">
                 Add Number
               </h3>
-              
               <p className="text-white text-lg opacity-90 font-medium leading-relaxed">
                 Save a new phone number and start your memorization journey
               </p>
-              
-              {/* Animated accent */}
               <motion.div
                 className="mt-6 w-16 h-1 bg-white rounded-full opacity-60"
                 initial={{ width: 0 }}
@@ -247,7 +238,7 @@ const Dashboard = ({ onNavigate }) => {
             </div>
           </motion.div>
 
-          {/* My Numbers - Enhanced */}
+          {/* My Numbers */}
           <motion.div
             className="group relative overflow-hidden bg-gradient-to-br from-emerald-500 via-teal-500 to-cyan-500 p-10 rounded-3xl shadow-2xl cursor-pointer transform transition-all duration-300"
             whileHover={{
@@ -258,9 +249,7 @@ const Dashboard = ({ onNavigate }) => {
             whileTap={{ scale: 0.98 }}
             onClick={() => onNavigate('number-list')}
           >
-            {/* Animated background overlay */}
             <div className="absolute inset-0 bg-gradient-to-r from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-            
             <div className="relative z-10 flex flex-col items-center text-center">
               <motion.div
                 className="w-20 h-20 bg-white bg-opacity-20 backdrop-filter backdrop-blur-lg rounded-3xl flex items-center justify-center mb-6 shadow-lg"
@@ -269,16 +258,12 @@ const Dashboard = ({ onNavigate }) => {
               >
                 <SafeIcon icon={FiList} size={40} className="text-white" />
               </motion.div>
-              
               <h3 className="text-3xl font-black text-white mb-4 drop-shadow-lg">
                 My Numbers
               </h3>
-              
               <p className="text-white text-lg opacity-90 font-medium leading-relaxed">
                 View, manage, and practice with your saved phone numbers
               </p>
-              
-              {/* Animated accent */}
               <motion.div
                 className="mt-6 w-16 h-1 bg-white rounded-full opacity-60"
                 initial={{ width: 0 }}
@@ -289,7 +274,7 @@ const Dashboard = ({ onNavigate }) => {
           </motion.div>
         </motion.div>
 
-        {/* Game Modes Section Title */}
+        {/* Game Modes Section */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -301,19 +286,19 @@ const Dashboard = ({ onNavigate }) => {
           </h2>
           <div className="h-1 w-24 bg-gradient-to-r from-indigo-500 to-purple-500 mx-auto mt-2 rounded-full"></div>
         </motion.div>
-
-        {/* Game Modes Grid with Usage Tracking */}
+        
+        {/* Game Modes Grid */}
         <motion.div
           initial={{ opacity: 0, y: 40 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.6 }}
           className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto mb-12"
         >
-          {gameModesWithUsage.map((game, index) => {
+          {gameModesWithUsage.map((game) => {
             const canPlay = canPlayGameMode(game.id);
             const remainingUses = getRemainingUsesForGameMode(game.id);
             const isActive = subscription?.subscription_status === 'active';
-            const usedUses = 2 - remainingUses; // Calculate used uses
+            const usedUses = 2 - remainingUses;
 
             return (
               <motion.div
@@ -340,7 +325,6 @@ const Dashboard = ({ onNavigate }) => {
                 }}
               >
                 <div className={`${game.color} h-full w-full rounded-3xl p-6 relative`}>
-                  {/* Lock overlay for used up games */}
                   {!canPlay && !isActive && (
                     <div className="absolute inset-0 bg-black bg-opacity-50 rounded-3xl flex items-center justify-center">
                       <div className="text-center">
@@ -360,7 +344,6 @@ const Dashboard = ({ onNavigate }) => {
                     </motion.div>
                     <div className="flex-1">
                       <h3 className="text-xl font-bold text-white">{game.name}</h3>
-                      {/* FIXED USAGE INDICATOR - Shows used/total format */}
                       {subscription?.subscription_status === 'free_trial' && (
                         <div className="text-white text-opacity-80 text-sm">
                           {isActive ? 'Unlimited' : `${usedUses}/2 plays used`}
@@ -377,7 +360,7 @@ const Dashboard = ({ onNavigate }) => {
           })}
         </motion.div>
 
-        {/* Subscription CTA for Free Trial Users */}
+        {/* Subscription CTA */}
         {subscription?.subscription_status === 'free_trial' && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -432,50 +415,8 @@ const Dashboard = ({ onNavigate }) => {
             <div className="absolute inset-0 -z-10 rounded-2xl bg-white/10 opacity-0 blur-xl transition-opacity duration-500 group-hover:opacity-100"></div>
           </motion.a>
         </motion.div>
-
-        {/* Fun Floating Elements for Extra Hip Factor */}
-        <motion.div
-          className="absolute top-1/4 left-10 w-8 h-8 bg-gradient-to-r from-pink-400 to-purple-400 rounded-full opacity-60"
-          animate={{
-            y: [0, -20, 0],
-            rotate: [0, 180, 360],
-          }}
-          transition={{
-            duration: 4,
-            repeat: Infinity,
-            ease: "easeInOut"
-          }}
-        />
-        <motion.div
-          className="absolute top-1/3 right-16 w-6 h-6 bg-gradient-to-r from-blue-400 to-cyan-400 rounded-full opacity-60"
-          animate={{
-            y: [0, 15, 0],
-            rotate: [0, -180, -360],
-          }}
-          transition={{
-            duration: 3,
-            repeat: Infinity,
-            ease: "easeInOut",
-            delay: 1
-          }}
-        />
-        <motion.div
-          className="absolute bottom-1/4 left-1/4 w-4 h-4 bg-gradient-to-r from-emerald-400 to-teal-400 rounded-full opacity-60"
-          animate={{
-            y: [0, -10, 0],
-            x: [0, 10, 0],
-            rotate: [0, 90, 180],
-          }}
-          transition={{
-            duration: 5,
-            repeat: Infinity,
-            ease: "easeInOut",
-            delay: 2
-          }}
-        />
       </div>
 
-      {/* Pricing Modal */}
       <PricingModal
         isOpen={showPricingModal}
         onClose={() => setShowPricingModal(false)}
