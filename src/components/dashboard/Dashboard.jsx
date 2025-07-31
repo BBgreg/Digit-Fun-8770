@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { useAuth } from '/src/contexts/AuthContext.jsx';
-import { useSubscription } from '/src/hooks/useSubscription.jsx';
-import SafeIcon from '/src/common/SafeIcon.jsx';
-import SubscriptionStatus from '/src/components/subscription/SubscriptionStatus.jsx';
-import PricingModal from '/src/components/subscription/PricingModal.jsx';
+import { useAuth } from '../../contexts/AuthContext.jsx';
+import { useSubscription } from '../../hooks/useSubscription.jsx';
+import SafeIcon from '../../common/SafeIcon.jsx';
+import SubscriptionStatus from '../subscription/SubscriptionStatus.jsx';
+import PricingModal from '../subscription/PricingModal.jsx';
 import * as FiIcons from 'react-icons/fi';
 
 const { FiPlus, FiList, FiLogOut, FiShield, FiTarget, FiPuzzle, FiCircle, FiFilter, FiExternalLink, FiStar, FiLock } = FiIcons;
