@@ -10,8 +10,9 @@ import supabase from '../../lib/supabase';
 
 const { FiArrowLeft, FiClock, FiCheck, FiStar } = FiIcons;
 
-const Speed5 = ({ onNavigate, phoneNumbers: propPhoneNumbers }) => {
-  // Game state - Removed isPreGame state
+// FINAL FIX: Added onGameEnd to the component's props
+const Speed5 = ({ onNavigate, phoneNumbers: propPhoneNumbers, onGameEnd }) => {
+  // Game state
   const [gameStarted, setGameStarted] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedNumbers, setSelectedNumbers] = useState([]);
@@ -38,7 +39,6 @@ const Speed5 = ({ onNavigate, phoneNumbers: propPhoneNumbers }) => {
         setIsLoading(true);
         setError(null);
         
-        // Check if user is authenticated
         if (!user || !user.id) {
           console.error('No authenticated user found');
           setError('You must be logged in to play this game');
@@ -48,7 +48,6 @@ const Speed5 = ({ onNavigate, phoneNumbers: propPhoneNumbers }) => {
         
         console.log('Fetching phone numbers for user:', user.id);
         
-        // Fetch phone numbers for the current user
         const { data, error: fetchError } = await supabase
           .from('user_phone_numbers')
           .select('id, contact_name, phone_number_digits')
@@ -67,19 +66,15 @@ const Speed5 = ({ onNavigate, phoneNumbers: propPhoneNumbers }) => {
           return;
         }
 
-        // Set phone numbers
         setPhoneNumbers(data);
 
-        // Immediately initialize and start the game
         console.log('Auto-starting game with phone numbers:', data.length);
         
-        // Select 5 numbers (with repetition if needed)
         let selected = [];
         let numbersPool = [...data];
         
         while (selected.length < 5) {
           if (numbersPool.length === 0) {
-            // Reset pool if we need more numbers
             numbersPool = [...data];
           }
           
@@ -92,19 +87,16 @@ const Speed5 = ({ onNavigate, phoneNumbers: propPhoneNumbers }) => {
             phoneNumber: selectedNumber.phone_number_digits,
           });
           
-          // Remove selected number from pool to avoid immediate repetition
           numbersPool.splice(randomIndex, 1);
         }
 
         console.log('Selected numbers for game:', selected.length);
         setSelectedNumbers(selected);
 
-        // Start the game immediately
         setGameStarted(true);
         setCurrentNumber(selected[0]);
         console.log('First challenge set:', selected[0]);
         
-        // Start timer
         const now = Date.now();
         setStartTime(now);
         timerRef.current = setInterval(() => {
@@ -120,13 +112,11 @@ const Speed5 = ({ onNavigate, phoneNumbers: propPhoneNumbers }) => {
       }
     };
 
-    // Only fetch and start if user is authenticated
     if (user) {
       fetchPhoneNumbersAndStartGame();
     }
   }, [user]);
 
-  // Calculate stars based on time
   const calculateStars = (time) => {
     if (time <= 20) return 5;
     if (time <= 30) return 4;
@@ -135,14 +125,12 @@ const Speed5 = ({ onNavigate, phoneNumbers: propPhoneNumbers }) => {
     return 1;
   };
 
-  // Format time for display
   const formatTime = (seconds) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
   };
 
-  // Handle input change
   const handleInputChange = (e) => {
     const value = e.target.value.replace(/\D/g, '');
     if (value.length <= 10) {
@@ -150,19 +138,16 @@ const Speed5 = ({ onNavigate, phoneNumbers: propPhoneNumbers }) => {
     }
   };
 
-  // Handle input from keypad
   const handleKeypadPress = (digit) => {
     if (inputValue.length < 10) {
       setInputValue(prev => prev + digit);
     }
   };
 
-  // Handle backspace
   const handleBackspace = () => {
     setInputValue(prev => prev.slice(0, -1));
   };
 
-  // Handle submit
   const handleSubmit = () => {
     if (!inputValue || inputValue.length !== 10 || !currentNumber) return;
     
@@ -171,11 +156,9 @@ const Speed5 = ({ onNavigate, phoneNumbers: propPhoneNumbers }) => {
     console.log('Expected:', currentNumber.phoneNumber);
 
     if (inputValue === currentNumber.phoneNumber) {
-      // Correct answer
       playSound('correct');
       
       if (currentIndex < selectedNumbers.length - 1) {
-        // Move to next number
         const nextIndex = currentIndex + 1;
         setCurrentIndex(nextIndex);
         setCurrentNumber(selectedNumbers[nextIndex]);
@@ -183,18 +166,15 @@ const Speed5 = ({ onNavigate, phoneNumbers: propPhoneNumbers }) => {
         
         console.log('Moving to next contact:', selectedNumbers[nextIndex].contactName);
       } else {
-        // Game complete
         handleGameComplete();
       }
     } else {
-      // Incorrect answer
       playSound('incorrect');
       setShakeInput(true);
       setTimeout(() => setShakeInput(false), 500);
     }
   };
 
-  // Handle game completion
   const handleGameComplete = () => {
     if (timerRef.current) {
       clearInterval(timerRef.current);
@@ -208,7 +188,6 @@ const Speed5 = ({ onNavigate, phoneNumbers: propPhoneNumbers }) => {
     const earnedStars = calculateStars(finalTime);
     setStars(earnedStars);
 
-    // Save results for each number played
     selectedNumbers.forEach(number => {
       saveGameResult(
         number.id,
@@ -218,12 +197,10 @@ const Speed5 = ({ onNavigate, phoneNumbers: propPhoneNumbers }) => {
       );
     });
 
-    // Notify parent component after delay
     setTimeout(() => {
       if (onGameEnd) {
         onGameEnd(earnedStars, { time_taken: finalTime });
       } else {
-        // If onGameEnd is not provided, navigate to dashboard after showing results
         setTimeout(() => {
           onNavigate('dashboard');
         }, 3000);
@@ -231,7 +208,6 @@ const Speed5 = ({ onNavigate, phoneNumbers: propPhoneNumbers }) => {
     }, 2000);
   };
 
-  // Clean up on unmount
   useEffect(() => {
     return () => {
       if (timerRef.current) {
@@ -240,7 +216,6 @@ const Speed5 = ({ onNavigate, phoneNumbers: propPhoneNumbers }) => {
     };
   }, []);
 
-  // Format phone number for display
   const formatPhoneNumber = (number) => {
     if (!number) return '';
     
@@ -251,7 +226,6 @@ const Speed5 = ({ onNavigate, phoneNumbers: propPhoneNumbers }) => {
     return cleaned;
   };
 
-  // Render keypad
   const renderKeypad = () => {
     const keys = [
       [1, 2, 3],
@@ -310,7 +284,6 @@ const Speed5 = ({ onNavigate, phoneNumbers: propPhoneNumbers }) => {
     );
   };
 
-  // Show loading state
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center p-6 app-container">
@@ -329,7 +302,6 @@ const Speed5 = ({ onNavigate, phoneNumbers: propPhoneNumbers }) => {
     );
   }
 
-  // Render error state
   if (error) {
     return (
       <div className="min-h-screen flex items-center justify-center p-6 app-container">
@@ -367,7 +339,6 @@ const Speed5 = ({ onNavigate, phoneNumbers: propPhoneNumbers }) => {
 
   return (
     <div className="min-h-screen app-container">
-      {/* Animated background elements */}
       <div className="absolute top-0 left-0 w-full h-full overflow-hidden z-0">
         <div className="absolute top-0 left-0 w-96 h-96 bg-gradient-to-br from-purple-500 to-indigo-500 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob"></div>
         <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-indigo-500 to-blue-500 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob animation-delay-2000"></div>
@@ -377,7 +348,6 @@ const Speed5 = ({ onNavigate, phoneNumbers: propPhoneNumbers }) => {
       {showConfetti && <Confetti />}
 
       <div className="relative z-10 max-w-4xl mx-auto p-6">
-        {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -399,14 +369,12 @@ const Speed5 = ({ onNavigate, phoneNumbers: propPhoneNumbers }) => {
           </div>
         </motion.div>
 
-        {/* Game screen - Now shows immediately after loading */}
         {gameStarted && !gameComplete && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             className="flex flex-col items-center"
           >
-            {/* Current contact name display */}
             <AnimatePresence mode="wait">
               <motion.div
                 key={currentNumber?.contactName}
@@ -425,7 +393,6 @@ const Speed5 = ({ onNavigate, phoneNumbers: propPhoneNumbers }) => {
               </motion.div>
             </AnimatePresence>
 
-            {/* Phone number input */}
             <motion.div
               className={`w-full bg-white p-6 rounded-3xl shadow-lg mb-8 ${
                 shakeInput ? 'animate-shake' : ''
@@ -440,7 +407,7 @@ const Speed5 = ({ onNavigate, phoneNumbers: propPhoneNumbers }) => {
                   onChange={handleInputChange}
                   placeholder="(000) 000-0000"
                   className="w-full text-center py-4 text-3xl font-mono font-bold text-indigo-800 bg-transparent border-b-2 border-indigo-300 focus:border-indigo-600 focus:outline-none"
-                  readOnly // Use keypad instead
+                  readOnly
                 />
               </div>
               <div className="flex justify-center mt-4">
@@ -448,12 +415,10 @@ const Speed5 = ({ onNavigate, phoneNumbers: propPhoneNumbers }) => {
               </div>
             </motion.div>
 
-            {/* Keypad */}
             <div className="w-full bg-white p-6 rounded-3xl shadow-lg">
               {renderKeypad()}
             </div>
 
-            {/* Progress indicator */}
             <div className="mt-6 flex items-center justify-center gap-2">
               {selectedNumbers.map((_, index) => (
                 <div
@@ -471,7 +436,6 @@ const Speed5 = ({ onNavigate, phoneNumbers: propPhoneNumbers }) => {
           </motion.div>
         )}
 
-        {/* Game complete screen */}
         {gameComplete && (
           <motion.div
             initial={{ opacity: 0 }}
@@ -484,7 +448,6 @@ const Speed5 = ({ onNavigate, phoneNumbers: propPhoneNumbers }) => {
               You completed all 5 numbers in {formatTime(elapsedTime)}!
             </p>
 
-            {/* Star rating */}
             <div className="mb-8">
               <div className="flex justify-center gap-1">
                 {[...Array(5)].map((_, i) => (
@@ -502,7 +465,6 @@ const Speed5 = ({ onNavigate, phoneNumbers: propPhoneNumbers }) => {
               </p>
             </div>
 
-            {/* Action buttons */}
             <div className="flex gap-4 justify-center">
               <motion.button
                 onClick={() => onNavigate('number-selection', { gameMode: 'speed-5' })}
