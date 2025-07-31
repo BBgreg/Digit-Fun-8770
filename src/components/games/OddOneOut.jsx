@@ -10,7 +10,8 @@ import supabase from '../../lib/supabase';
 
 const { FiArrowLeft, FiClock, FiCheck, FiX, FiStar, FiPlay } = FiIcons;
 
-const OddOneOut = ({ onNavigate, phoneNumberId }) => {
+// FINAL FIX: Added onGameEnd to the component's props
+const OddOneOut = ({ onNavigate, phoneNumberId, onGameEnd }) => {
   // Game states
   const [isPreGame, setIsPreGame] = useState(true);
   const [gameStarted, setGameStarted] = useState(false);
@@ -47,17 +48,17 @@ const OddOneOut = ({ onNavigate, phoneNumberId }) => {
     return cleaned;
   };
 
-  // Calculate stars based on time - UPDATED THRESHOLDS
+  // Calculate stars based on time
   const calculateStars = (time) => {
-    if (time < 10) return 5;     // Under 10 seconds - 5 stars
-    if (time < 15) return 4;     // 10-15 seconds - 4 stars
-    if (time < 25) return 3;     // 15-25 seconds - 3 stars
-    if (time < 35) return 2;     // 25-35 seconds - 2 stars
-    if (time < 45) return 1;     // 35-45 seconds - 1 star
-    return 0;                    // Over 45 seconds - 0 stars
+    if (time < 10) return 5;
+    if (time < 15) return 4;
+    if (time < 25) return 3;
+    if (time < 35) return 2;
+    if (time < 45) return 1;
+    return 0;
   };
 
-  // Generate a fake phone number by altering a real one
+  // Generate a fake phone number
   const generateFakeNumber = (realNumber, existingNumbers) => {
     const digits = realNumber.split('');
     let fakeNumber;
@@ -65,39 +66,28 @@ const OddOneOut = ({ onNavigate, phoneNumberId }) => {
     const maxAttempts = 10;
 
     do {
-      // Clone the original number
       const fakeDigits = [...digits];
-      
-      // Randomly decide between changing 1-2 digits or swapping adjacent digits
       const alterationType = Math.random() > 0.5 ? 'change' : 'swap';
       
       if (alterationType === 'change') {
-        // Change 1 or 2 digits
         const numChanges = Math.random() > 0.5 ? 1 : 2;
-        
         for (let i = 0; i < numChanges; i++) {
           const randomIndex = Math.floor(Math.random() * 10);
           const currentDigit = parseInt(fakeDigits[randomIndex]);
-          
-          // Generate a new digit that's different from the current one
           let newDigit;
           do {
             newDigit = Math.floor(Math.random() * 10).toString();
           } while (newDigit === currentDigit.toString());
-          
           fakeDigits[randomIndex] = newDigit;
         }
       } else {
-        // Swap adjacent digits
-        const randomIndex = Math.floor(Math.random() * 9); // Only go up to 8 to ensure we can swap with next digit
-        [fakeDigits[randomIndex], fakeDigits[randomIndex + 1]] = 
-          [fakeDigits[randomIndex + 1], fakeDigits[randomIndex]];
+        const randomIndex = Math.floor(Math.random() * 9);
+        [fakeDigits[randomIndex], fakeDigits[randomIndex + 1]] = [fakeDigits[randomIndex + 1], fakeDigits[randomIndex]];
       }
       
       fakeNumber = fakeDigits.join('');
       attempts++;
       
-      // Make sure this fake number doesn't match any existing number
     } while (
       (existingNumbers.includes(fakeNumber) || userPhoneNumbers.some(pn => pn.phone_number_digits === fakeNumber)) && 
       attempts < maxAttempts
@@ -106,36 +96,29 @@ const OddOneOut = ({ onNavigate, phoneNumberId }) => {
     return fakeNumber;
   };
 
-  // Generate the list of phone numbers for the game
+  // Generate numbers for the game
   const generateGameNumbers = () => {
     if (userPhoneNumbers.length === 0) {
       setError("No phone numbers available to play with");
       return [];
     }
 
-    // Determine how many real numbers to use (between 2 and 7, or all if fewer than 7)
     const maxRealNumbers = Math.min(7, userPhoneNumbers.length);
     const numRealNumbers = Math.max(2, Math.floor(Math.random() * (maxRealNumbers - 1)) + 2);
     
-    // Randomly select real numbers
     const shuffledRealNumbers = [...userPhoneNumbers].sort(() => 0.5 - Math.random());
     const selectedRealNumbers = shuffledRealNumbers.slice(0, numRealNumbers);
     
-    // Generate fake numbers based on the selected real numbers
     const numFakeNumbers = 10 - numRealNumbers;
     const fakeNumbers = [];
     const allNumbers = selectedRealNumbers.map(pn => pn.phone_number_digits);
     
     for (let i = 0; i < numFakeNumbers; i++) {
-      // Select a random real number to base the fake one on
       const baseRealNumber = selectedRealNumbers[Math.floor(Math.random() * numRealNumbers)].phone_number_digits;
-      
-      // Generate a fake number that's not already in our list
       const fakeNumber = generateFakeNumber(baseRealNumber, [...allNumbers, ...fakeNumbers]);
       fakeNumbers.push(fakeNumber);
     }
     
-    // Combine real and fake numbers, then format for display
     const gameNumbers = [
       ...selectedRealNumbers.map(pn => ({
         id: pn.id,
@@ -151,11 +134,10 @@ const OddOneOut = ({ onNavigate, phoneNumberId }) => {
       }))
     ];
     
-    // Shuffle the combined list
     return gameNumbers.sort(() => 0.5 - Math.random());
   };
 
-  // Fetch user's phone numbers
+  // Fetch phone numbers
   const fetchPhoneNumbers = async () => {
     try {
       setLoading(true);
@@ -191,7 +173,6 @@ const OddOneOut = ({ onNavigate, phoneNumberId }) => {
     }
   };
 
-  // Initialize game data on component mount
   useEffect(() => {
     fetchPhoneNumbers();
     
@@ -202,16 +183,13 @@ const OddOneOut = ({ onNavigate, phoneNumberId }) => {
     };
   }, [user]);
 
-  // Start the game
   const startGame = () => {
     setIsPreGame(false);
     setGameStarted(true);
     
-    // Generate the list of numbers
     const generatedNumbers = generateGameNumbers();
     setDisplayedNumbers(generatedNumbers);
     
-    // Start the timer
     const now = Date.now();
     setStartTime(now);
     timerRef.current = setInterval(() => {
@@ -219,7 +197,6 @@ const OddOneOut = ({ onNavigate, phoneNumberId }) => {
     }, 1000);
   };
 
-  // Handle number selection
   const toggleNumberSelection = (number) => {
     if (gameComplete) return;
     
@@ -227,25 +204,20 @@ const OddOneOut = ({ onNavigate, phoneNumberId }) => {
       const isSelected = prev.some(n => n.id === number.id);
       
       if (isSelected) {
-        // Deselect the number
         return prev.filter(n => n.id !== number.id);
       } else {
-        // Select the number
         return [...prev, number];
       }
     });
     
-    // Reset incorrect submission state when selection changes
     if (incorrectSubmission) {
       setIncorrectSubmission(false);
     }
   };
 
-  // Handle submission
   const handleSubmit = () => {
     if (gameComplete || selectedNumbers.length === 0) return;
     
-    // Check if all and only fake numbers are selected
     const allFakeSelected = displayedNumbers
       .filter(n => !n.isReal)
       .every(fakeNumber => selectedNumbers.some(selected => selected.id === fakeNumber.id));
@@ -254,7 +226,7 @@ const OddOneOut = ({ onNavigate, phoneNumberId }) => {
       .every(selected => displayedNumbers.find(n => n.id === selected.id && !n.isReal));
     
     if (allFakeSelected && noRealSelected) {
-      // Correct submission!
+      // Correct submission
       if (timerRef.current) {
         clearInterval(timerRef.current);
       }
@@ -265,16 +237,13 @@ const OddOneOut = ({ onNavigate, phoneNumberId }) => {
       setShowConfetti(true);
       playSound('win');
       
-      // Calculate stars
       const earnedStars = calculateStars(finalTime);
       setStars(earnedStars);
       
-      // Save game result
       const realNumberIds = displayedNumbers
         .filter(n => n.isReal)
         .map(n => n.id);
         
-      // Save results for each real number that was in the game
       realNumberIds.forEach(id => {
         saveGameResult(
           id,
@@ -287,19 +256,25 @@ const OddOneOut = ({ onNavigate, phoneNumberId }) => {
           }
         );
       });
+
+      // Call onGameEnd to update usage
+      if (onGameEnd) {
+        setTimeout(() => {
+            onGameEnd(earnedStars, { time_taken: finalTime });
+        }, 2000);
+      }
+
     } else {
       // Incorrect submission
       setIncorrectSubmission(true);
       playSound('incorrect');
       
-      // Reset after a short delay
       setTimeout(() => {
         setIncorrectSubmission(false);
       }, 1000);
     }
   };
 
-  // Show loading state
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center p-6 app-container">
@@ -318,7 +293,6 @@ const OddOneOut = ({ onNavigate, phoneNumberId }) => {
     );
   }
 
-  // Show error state
   if (error) {
     return (
       <div className="min-h-screen flex items-center justify-center p-6 app-container">
@@ -356,7 +330,6 @@ const OddOneOut = ({ onNavigate, phoneNumberId }) => {
 
   return (
     <div className="min-h-screen app-container">
-      {/* Animated background elements */}
       <div className="absolute top-0 left-0 w-full h-full overflow-hidden z-0">
         <div className="absolute top-0 left-0 w-96 h-96 bg-gradient-to-br from-purple-500 to-indigo-500 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob"></div>
         <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-indigo-500 to-blue-500 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob animation-delay-2000"></div>
@@ -366,7 +339,6 @@ const OddOneOut = ({ onNavigate, phoneNumberId }) => {
       {showConfetti && <Confetti />}
       
       <div className="relative z-10 max-w-4xl mx-auto p-6">
-        {/* App Branding Section */}
         <motion.div 
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -381,8 +353,6 @@ const OddOneOut = ({ onNavigate, phoneNumberId }) => {
               backgroundClip: "text",
               textShadow: "0 0 20px rgba(147,51,234,0.5)",
               fontFamily: "'Fredoka', sans-serif",
-              letterSpacing: "-0.02em",
-              lineHeight: "1.2"
             }}
           >
             Digit Fun
@@ -402,14 +372,13 @@ const OddOneOut = ({ onNavigate, phoneNumberId }) => {
           </p>
         </motion.div>
         
-        {/* Header */}
         <motion.div 
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           className="flex items-center justify-between mb-8"
         >
           <button
-            onClick={() => onNavigate('number-selection', { gameMode: 'odd-one-out' })}
+            onClick={() => onNavigate('dashboard')}
             className="p-3 bg-white rounded-2xl shadow-md hover:shadow-lg transition-shadow text-indigo-600 hover:text-indigo-800"
           >
             <SafeIcon icon={FiArrowLeft} size={20} />
@@ -426,7 +395,6 @@ const OddOneOut = ({ onNavigate, phoneNumberId }) => {
           </div>
         </motion.div>
         
-        {/* Pre-game screen */}
         {isPreGame && (
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
@@ -478,14 +446,12 @@ const OddOneOut = ({ onNavigate, phoneNumberId }) => {
           </motion.div>
         )}
         
-        {/* Game board */}
         {gameStarted && !isPreGame && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             className="flex flex-col items-center"
           >
-            {/* Phone number list */}
             <motion.div
               className={`w-full bg-white p-6 rounded-3xl shadow-lg mb-6 ${
                 incorrectSubmission ? 'animate-shake' : ''
@@ -566,7 +532,6 @@ const OddOneOut = ({ onNavigate, phoneNumberId }) => {
               </div>
             </motion.div>
             
-            {/* Submit button */}
             {!gameComplete ? (
               <motion.button
                 onClick={handleSubmit}
@@ -602,7 +567,7 @@ const OddOneOut = ({ onNavigate, phoneNumberId }) => {
                 
                 <div className="flex gap-4 justify-center">
                   <motion.button
-                    onClick={() => onNavigate('number-selection', { gameMode: 'odd-one-out' })}
+                    onClick={() => onNavigate('dashboard')}
                     className="bg-gray-100 text-indigo-700 px-6 py-3 rounded-2xl font-semibold hover:bg-gray-200 transition-all"
                     whileHover={{ y: -2 }}
                     whileTap={{ y: 0 }}
@@ -627,4 +592,4 @@ const OddOneOut = ({ onNavigate, phoneNumberId }) => {
   );
 };
 
-export default OddOneOut;
+export default OddOneO
