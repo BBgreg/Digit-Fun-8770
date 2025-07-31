@@ -29,19 +29,22 @@ serve(async (req) => {
     // 2. Get the user from the access token.
     const { data: { user } } = await supabaseClient.auth.getUser();
     if (!user) {
-      throw new Error('User not found');
+      return new Response(JSON.stringify({ error: 'User not found' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 401,
+      });
     }
 
     // 3. Get the user's Stripe customer ID from your database.
-    const { data: profile, error } = await supabaseClient
+    const { data: profile, error: profileError } = await supabaseClient
       .from('app_users_profile')
       .select('stripe_customer_id')
       .eq('user_id', user.id)
       .single();
 
-    if (error) {
-      console.error('Error fetching profile:', error);
-      throw error;
+    if (profileError && profileError.code !== 'PGRST116') { // PGRST116 means no row was found, which is okay.
+      console.error('Error fetching profile:', profileError);
+      throw profileError;
     }
 
     let stripeCustomerId = profile?.stripe_customer_id;
@@ -56,10 +59,15 @@ serve(async (req) => {
       stripeCustomerId = customer.id;
 
       // 5. Save the new Stripe customer ID to your database.
-      await supabaseClient
+      const { error: updateError } = await supabaseClient
         .from('app_users_profile')
         .update({ stripe_customer_id: stripeCustomerId })
         .eq('user_id', user.id);
+
+      if (updateError) {
+        console.error('Error updating profile with Stripe customer ID:', updateError);
+        throw updateError;
+      }
     }
 
     // 6. Create a Stripe Checkout session.
