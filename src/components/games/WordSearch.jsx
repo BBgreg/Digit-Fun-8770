@@ -403,4 +403,4 @@ const WordSearch = ({ onNavigate, onGameEnd }) => {
   );
 };
 
-export default WordSear
+export default WordSearch;
