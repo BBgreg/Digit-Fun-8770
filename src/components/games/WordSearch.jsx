@@ -16,8 +16,9 @@ const TOTAL_HIDDEN_NUMBERS = 6;
 const CELL_SIZE = 48;
 const CELL_GAP = 8;
 
+// Change 1: Added onGameEnd to the props
 const WordSearch = ({ onNavigate, onGameEnd }) => {
-  // Game states (restored to original)
+  // Game states
   const [isPreGame, setIsPreGame] = useState(true);
   const [gameStarted, setGameStarted] = useState(false);
   const [gameComplete, setGameComplete] = useState(false);
@@ -35,12 +36,24 @@ const WordSearch = ({ onNavigate, onGameEnd }) => {
   const [phoneNumbers, setPhoneNumbers] = useState([]);
   const [showSubmitButton, setShowSubmitButton] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
-  const [mouseDownCell, setMouseDownCell] = useState(null);
+  const [dragStartCell, setDragStartCell] = useState(null);
+  const [selectionMethod, setSelectionMethod] = useState(null);
+  const [mouseDownTime, setMouseDownTime] = useState(null);
+  const [hasMouseMoved, setHasMouseMoved] = useState(false);
+  const [touchStartTime, setTouchStartTime] = useState(null);
+  const [lastTouchPosition, setLastTouchPosition] = useState(null);
   const [generationAttempts, setGenerationAttempts] = useState(0);
+  const [generationLog, setGenerationLog] = useState([]);
   const [loadingMessage, setLoadingMessage] = useState('Preparing your challenge...');
+  const [mouseDownCell, setMouseDownCell] = useState(null);
+  const [touchIdentifier, setTouchIdentifier] = useState(null);
+  const [clickStartTime, setClickStartTime] = useState(null);
   
   const timerRef = useRef(null);
   const gridRef = useRef(null);
+  const gridGenerationTimeoutRef = useRef(null);
+  const cellRefs = useRef({});
+  const clickTimeoutRef = useRef(null);
   const { saveGameResult } = useGameProgress();
   const { user } = useAuth();
 
@@ -66,11 +79,13 @@ const WordSearch = ({ onNavigate, onGameEnd }) => {
     return 0;
   };
 
-  const fetchPhoneNumbers = useCallback(async () => {
+  const fetchPhoneNumbers = async () => {
     try {
       setLoading(true);
+      setError(null);
       if (!user) {
         setError("You must be logged in to play this game");
+        setLoading(false);
         return;
       }
       const { data, error: fetchError } = await supabase
@@ -78,30 +93,48 @@ const WordSearch = ({ onNavigate, onGameEnd }) => {
         .select('id, contact_name, phone_number_digits')
         .eq('user_id', user.id);
       if (fetchError) throw fetchError;
-      if (!data || data.length < 1) {
-        setError("Please add at least one phone number to play Word Search.");
+      if (!data || data.length === 0) {
+        setError("No phone numbers available. Please add some numbers first.");
+        setLoading(false);
         return;
       }
       setPhoneNumbers(data);
+      setLoading(false);
     } catch (err) {
-      setError('Failed to retrieve your phone numbers.');
-    } finally {
+      setError('Failed to retrieve your phone numbers. Please try again.');
       setLoading(false);
     }
-  }, [user]);
+  };
 
   useEffect(() => {
     fetchPhoneNumbers();
+    document.addEventListener('touchend', handleGlobalTouchEnd);
+    document.addEventListener('mouseup', handleGlobalMouseUp);
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
+      if (gridGenerationTimeoutRef.current) clearTimeout(gridGenerationTimeoutRef.current);
+      if (clickTimeoutRef.current) clearTimeout(clickTimeoutRef.current);
+      document.removeEventListener('touchend', handleGlobalTouchEnd);
+      document.removeEventListener('mouseup', handleGlobalMouseUp);
     };
-  }, [fetchPhoneNumbers]);
+  }, [user]);
 
-  // Restored your original complex path generation logic
-  const generateComplexPath = useCallback((startRow, startCol, digits, occupiedCells) => {
-    const path = [{ row: startRow, col: startCol }];
-    const visited = new Set([`${startRow}-${startCol}`]);
+  const logGeneration = (message, data = null) => {
+    const logEntry = { timestamp: new Date().toISOString(), message, ...(data ? { data } : {}) };
+    console.log(`[WordSearch] ${message}`, data || '');
+    setGenerationLog(prev => [...prev, logEntry]);
+    if (message.includes('Grid generation attempt')) setLoadingMessage('Designing your unique puzzle grid...');
+    else if (message.includes('Selected')) setLoadingMessage('Selecting your phone numbers...');
+    else if (message.includes('Placed number')) setLoadingMessage('Creating complex paths for your numbers...');
+    else if (message.includes('Validation')) setLoadingMessage('Ensuring your puzzle is perfectly solvable...');
+    else if (message.includes('Complete')) setLoadingMessage('Finishing touches on your puzzle...');
+  };
 
+  const generateComplexPath = useCallback((startRow, startCol, digits, occupiedCells, grid) => {
+    const path = [];
+    const visited = new Set();
+    path.push({ row: startRow, col: startCol });
+    visited.add(`${startRow}-${startCol}`);
     const findPath = (currentRow, currentCol, digitIndex) => {
       if (digitIndex >= digits.length) return true;
       const shuffledDirections = [...DIRECTIONS].sort(() => Math.random() - 0.5);
@@ -119,99 +152,127 @@ const WordSearch = ({ onNavigate, onGameEnd }) => {
       }
       return false;
     };
-
-    if (findPath(startRow, startCol, 1)) {
-        let directionChanges = 0;
-        for (let i = 2; i < path.length; i++) {
-            const dir1 = { dx: path[i-1].col - path[i-2].col, dy: path[i-1].row - path[i-2].row };
-            const dir2 = { dx: path[i].col - path[i-1].col, dy: path[i].row - path[i-1].row };
-            if (dir1.dx !== dir2.dx || dir1.dy !== dir2.dy) directionChanges++;
-        }
-        if (directionChanges < 3) return null;
-        return path;
+    const success = findPath(startRow, startCol, 1);
+    if (!success) return null;
+    let directionChanges = 0;
+    for (let i = 2; i < path.length; i++) {
+      const dir1 = { dx: path[i - 1].col - path[i - 2].col, dy: path[i - 1].row - path[i - 2].row };
+      const dir2 = { dx: path[i].col - path[i - 1].col, dy: path[i].row - path[i - 1].row };
+      if (dir1.dx !== dir2.dx || dir1.dy !== dir2.dy) directionChanges++;
     }
-    return null;
+    if (directionChanges < 3 && path.length === 10) return null;
+    return path;
   }, []);
 
-  // Restored your original grid generation logic
+  const isAdjacent = (x1, y1, x2, y2) => Math.abs(x1 - x2) <= 1 && Math.abs(y1 - y2) <= 1;
+
+  const verifyNumberPath = (grid, startPos, digits, number) => {
+    if (grid[startPos.y][startPos.x] !== digits[0]) return false;
+    for (let i = 0; i < number.positions.length; i++) {
+      const pos = number.positions[i];
+      const expectedDigit = digits[i];
+      if (pos.y < 0 || pos.y >= GRID_ROWS || pos.x < 0 || pos.x >= GRID_COLS) return false;
+      if (grid[pos.y][pos.x] !== expectedDigit) return false;
+      if (i > 0) {
+        const prevPos = number.positions[i - 1];
+        if (!isAdjacent(prevPos.x, prevPos.y, pos.x, pos.y)) return false;
+      }
+    }
+    if (number.positions.length !== digits.length) return false;
+    return true;
+  };
+  
+  const validateNumberDiscoverability = (grid, placedNumbers) => {
+    for (const number of placedNumbers) {
+      if (!verifyNumberPath(grid, number.positions[0], number.digits.split(''), number)) {
+        return false;
+      }
+    }
+    return true;
+  };
+
   const generateGrid = useCallback(() => {
     const currentAttempt = generationAttempts + 1;
     setGenerationAttempts(currentAttempt);
-    
-    if (phoneNumbers.length === 0) return { error: "No phone numbers available." };
-
+    logGeneration(`🎯 Grid generation attempt ${currentAttempt}`);
     const newGrid = Array(GRID_ROWS).fill().map(() => Array(GRID_COLS).fill(null));
     const numbersWithPositions = [];
     const occupiedCells = new Set();
-
-    const selectedForGame = [];
-    let pool = [...phoneNumbers];
-    for(let i=0; i<TOTAL_HIDDEN_NUMBERS; i++) {
-        if(pool.length === 0) pool = [...phoneNumbers];
-        const randIndex = Math.floor(Math.random() * pool.length);
-        selectedForGame.push(pool.splice(randIndex, 1)[0]);
+    const allPossibleStartPositions = [];
+    for (let row = 0; row < GRID_ROWS; row++) for (let col = 0; col < GRID_COLS; col++) allPossibleStartPositions.push({ row, col });
+    const shuffledStartPositions = [...allPossibleStartPositions].sort(() => Math.random() - 0.5);
+    const selectedNumbers = [];
+    let availablePhoneNumbers = [...phoneNumbers];
+    if (availablePhoneNumbers.length === 0) return { error: "No phone numbers available. Please add some first." };
+    while (selectedNumbers.length < TOTAL_HIDDEN_NUMBERS) {
+      if (availablePhoneNumbers.length === 0) availablePhoneNumbers = [...phoneNumbers];
+      const randomIndex = Math.floor(Math.random() * availablePhoneNumbers.length);
+      const selectedNumber = availablePhoneNumbers[randomIndex];
+      selectedNumbers.push({ id: selectedNumber.id, contactName: selectedNumber.contact_name, digits: selectedNumber.phone_number_digits.split('') });
+      availablePhoneNumbers.splice(randomIndex, 1);
     }
-
-    for (const number of selectedForGame) {
+    let placedCount = 0;
+    for (const number of selectedNumbers) {
       let placed = false;
-      for (let i = 0; i < 2000; i++) {
-        const startRow = Math.floor(Math.random() * GRID_ROWS);
-        const startCol = Math.floor(Math.random() * GRID_COLS);
-        if (occupiedCells.has(`${startRow}-${startCol}`)) continue;
-
-        const path = generateComplexPath(startRow, startCol, number.phone_number_digits.split(''), occupiedCells);
-        if (path) {
+      let attempts = 0;
+      for (const startPos of shuffledStartPositions) {
+        if (attempts >= 1000) break;
+        const { row: startRow, col: startCol } = startPos;
+        if (occupiedCells.has(`${startRow}-${startCol}`)) { attempts++; continue; }
+        newGrid[startRow][startCol] = number.digits[0];
+        const path = generateComplexPath(startRow, startCol, number.digits, occupiedCells, newGrid);
+        if (!path) { newGrid[startRow][startCol] = null; attempts++; continue; }
+        if (path && path.length === 10) {
           path.forEach((pos, digitIndex) => {
-            newGrid[pos.row][pos.col] = number.phone_number_digits[digitIndex];
+            newGrid[pos.row][pos.col] = number.digits[digitIndex];
             occupiedCells.add(`${pos.row}-${pos.col}`);
           });
-          numbersWithPositions.push({
-            id: number.id,
-            contactName: number.contact_name,
-            digits: number.phone_number_digits,
-            positions: path.map(p => ({ x: p.col, y: p.row })),
-            found: false,
-            exactPath: path.map(p => ({ x: p.col, y: p.row }))
-          });
+          let directionChanges = 0;
+          for (let i = 2; i < path.length; i++) {
+            const dir1 = { dx: path[i - 1].col - path[i - 2].col, dy: path[i - 1].row - path[i - 2].row };
+            const dir2 = { dx: path[i].col - path[i - 1].col, dy: path[i].row - path[i - 1].row };
+            if (dir1.dx !== dir2.dx || dir1.dy !== dir2.dy) directionChanges++;
+          }
+          numbersWithPositions.push({ id: number.id, contactName: number.contactName, digits: number.digits.join(''), positions: path.map(pos => ({ x: pos.col, y: pos.row })), directionChanges, pathComplexity: directionChanges / 9, found: false, exactPath: path.map(pos => ({ x: pos.col, y: pos.row })) });
           placed = true;
+          placedCount++;
           break;
+        } else {
+          newGrid[startRow][startCol] = null;
         }
+        attempts++;
       }
       if (!placed) {
-        if (currentAttempt < 50) return generateGrid();
-        return { error: "Couldn't generate a solvable puzzle." };
+        if (currentAttempt < 30) return generateGrid();
+        return { error: "Couldn't generate a solvable puzzle. Please try again." };
       }
     }
-
     if (numbersWithPositions.length !== TOTAL_HIDDEN_NUMBERS) {
-        if (currentAttempt < 50) return generateGrid();
-        return { error: "Couldn't place all numbers." };
+      if (currentAttempt < 30) return generateGrid();
+      return { error: "Couldn't place all numbers." };
     }
-
-    for (let r = 0; r < GRID_ROWS; r++) {
-      for (let c = 0; c < GRID_COLS; c++) {
-        if (newGrid[r][c] === null) newGrid[r][c] = Math.floor(Math.random() * 10).toString();
-      }
+    for (let row = 0; row < GRID_ROWS; row++) for (let col = 0; col < GRID_COLS; col++) if (newGrid[row][col] === null) newGrid[row][col] = Math.floor(Math.random() * 10).toString();
+    if (!validateNumberDiscoverability(newGrid, numbersWithPositions)) {
+      if (currentAttempt < 30) return generateGrid();
+      return { error: "Couldn't generate a fully solvable puzzle after multiple attempts. Please try again." };
     }
-    
     setGenerationAttempts(0);
     return { grid: newGrid, hiddenNumbers: numbersWithPositions };
   }, [phoneNumbers, generationAttempts, generateComplexPath]);
 
-  // Added a small timeout to fix the "stuck on loading" screen
   const startGame = () => {
     setIsPreGame(false);
     setGameStarted(true);
+    setGenerationLog([]);
     setIsGeneratingGrid(true);
-    setLoadingMessage('Designing your unique puzzle...');
-    
+    setLoadingMessage('Preparing your challenge...');
     setTimeout(() => {
       const result = generateGrid();
       if (result.error) {
         setError(result.error);
-        setIsGeneratingGrid(false);
         setGameStarted(false);
         setIsPreGame(true);
+        setIsGeneratingGrid(false);
         return;
       }
       setGrid(result.grid);
@@ -225,14 +286,14 @@ const WordSearch = ({ onNavigate, onGameEnd }) => {
     }, 50);
   };
 
-  const isAdjacent = (x1, y1, x2, y2) => Math.abs(x1 - x2) <= 1 && Math.abs(y1 - y2) <= 1;
-
   const handleCellClick = (x, y) => {
     if (gameComplete || isCellFound(x, y) || isDragging) return;
     const cellValue = grid[y][x];
     if (currentSelection.length === 0) {
       setCurrentSelection([{ x, y, value: cellValue }]);
       setShowSubmitButton(false);
+      setSelectionMethod('click');
+      playSound('correct');
       return;
     }
     const existingIndex = currentSelection.findIndex(cell => cell.x === x && cell.y === y);
@@ -247,21 +308,30 @@ const WordSearch = ({ onNavigate, onGameEnd }) => {
       const newSelection = [...currentSelection, { x, y, value: cellValue }];
       setCurrentSelection(newSelection);
       setShowSubmitButton(newSelection.length === 10);
+      playSound('correct');
     } else {
       setCurrentSelection([{ x, y, value: cellValue }]);
       setShowSubmitButton(false);
+      setSelectionMethod('click');
+      playSound('correct');
     }
   };
-  
+
   const handleCellMouseDown = (e, x, y) => {
     if (gameComplete || isCellFound(x, y)) return;
+    setMouseDownTime(Date.now());
+    setClickStartTime(Date.now());
     setMouseDownCell({ x, y });
+    setHasMouseMoved(false);
+    setDragStartCell({ x, y });
   };
 
   const handleCellMouseMove = (e, x, y) => {
-    if (mouseDownCell) {
+    if (mouseDownCell && (mouseDownCell.x !== x || mouseDownCell.y !== y)) {
+      setHasMouseMoved(true);
       if (!isDragging) {
         setIsDragging(true);
+        setSelectionMethod('drag');
         const startCellValue = grid[mouseDownCell.y][mouseDownCell.x];
         setCurrentSelection([{ x: mouseDownCell.x, y: mouseDownCell.y, value: startCellValue }]);
         setShowSubmitButton(false);
@@ -284,27 +354,119 @@ const WordSearch = ({ onNavigate, onGameEnd }) => {
     }
   };
 
+  const handleCellTouchStart = (e, x, y) => {
+    if (gameComplete || isCellFound(x, y)) return;
+    e.preventDefault();
+    const now = Date.now();
+    setTouchStartTime(now);
+    setClickStartTime(now);
+    setLastTouchPosition({ x, y });
+    setMouseDownCell({ x, y });
+    if (e.touches && e.touches[0]) setTouchIdentifier(e.touches[0].identifier);
+  };
+
+  const handleCellTouchMove = (e, x, y) => {
+    if (gameComplete || isCellFound(x, y)) return;
+    e.preventDefault();
+    let isValidTouch = true;
+    if (e.changedTouches && e.changedTouches.length > 0) {
+      if (touchIdentifier !== null && e.changedTouches[0].identifier !== touchIdentifier) isValidTouch = false;
+    }
+    if (!isValidTouch) return;
+    if (!isDragging && mouseDownCell && (mouseDownCell.x !== x || mouseDownCell.y !== y)) {
+      setIsDragging(true);
+      setSelectionMethod('touch');
+      const startCellValue = grid[mouseDownCell.y][mouseDownCell.x];
+      setCurrentSelection([{ x: mouseDownCell.x, y: mouseDownCell.y, value: startCellValue }]);
+      setShowSubmitButton(false);
+    }
+    if (isDragging) {
+      if (lastTouchPosition && (lastTouchPosition.x !== x || lastTouchPosition.y !== y)) {
+        setLastTouchPosition({ x, y });
+        handleCellDrag(x, y);
+      }
+    }
+  };
+
+  const handleGlobalMouseUp = (e) => {
+    const isQuickClick = mouseDownTime && (Date.now() - mouseDownTime < 200) && !hasMouseMoved;
+    if (isQuickClick && mouseDownCell && !isDragging) {
+      handleCellClick(mouseDownCell.x, mouseDownCell.y);
+    } else if (isDragging) {
+      if (currentSelection.length === 10) setTimeout(() => handleSubmit(), 100);
+    }
+    setIsDragging(false);
+    setDragStartCell(null);
+    setMouseDownTime(null);
+    setMouseDownCell(null);
+    setHasMouseMoved(false);
+  };
+
+  const handleGlobalTouchEnd = (e) => {
+    let isValidTouch = true;
+    if (e.changedTouches && e.changedTouches.length > 0) {
+      if (touchIdentifier !== null && e.changedTouches[0].identifier !== touchIdentifier) isValidTouch = false;
+    }
+    if (!isValidTouch) return;
+    const isQuickTap = touchStartTime && (Date.now() - touchStartTime < 200) && !isDragging;
+    if (isQuickTap && mouseDownCell) {
+      handleCellClick(mouseDownCell.x, mouseDownCell.y);
+    } else if (isDragging) {
+      if (currentSelection.length === 10) setTimeout(() => handleSubmit(), 100);
+    }
+    setIsDragging(false);
+    setTouchStartTime(null);
+    setLastTouchPosition(null);
+    setMouseDownCell(null);
+    setTouchIdentifier(null);
+  };
+
+  const isExactPathMatch = (userSelection, hiddenNumber) => {
+    if (userSelection.length !== hiddenNumber.exactPath.length) return false;
+    for (let i = 0; i < userSelection.length; i++) {
+      if (userSelection[i].x !== hiddenNumber.exactPath[i].x || userSelection[i].y !== hiddenNumber.exactPath[i].y) return false;
+    }
+    return true;
+  };
+
   const handleSubmit = () => {
     if (currentSelection.length !== 10) return;
     const selectedDigits = currentSelection.map(cell => cell.value).join('');
     const matchedNumberIndex = hiddenNumbers.findIndex(num => num.digits === selectedDigits && !num.found);
     if (matchedNumberIndex !== -1) {
-      playSound('correct');
-      const newHiddenNumbers = [...hiddenNumbers];
-      newHiddenNumbers[matchedNumberIndex].found = true;
-      setHiddenNumbers(newHiddenNumbers);
-      setFoundNumbers([...foundNumbers, { ...newHiddenNumbers[matchedNumberIndex], positions: [...currentSelection] }]);
-      setCurrentSelection([]);
-      setShowSubmitButton(false);
-      if (newHiddenNumbers.every(num => num.found)) handleGameComplete();
+      const matchedNumber = hiddenNumbers[matchedNumberIndex];
+      const exactPathMatch = isExactPathMatch(currentSelection, matchedNumber);
+      if (exactPathMatch) {
+        playSound('correct');
+        const newHiddenNumbers = [...hiddenNumbers];
+        newHiddenNumbers[matchedNumberIndex].found = true;
+        setHiddenNumbers(newHiddenNumbers);
+        setFoundNumbers([...foundNumbers, { ...newHiddenNumbers[matchedNumberIndex], positions: [...currentSelection] }]);
+        setCurrentSelection([]);
+        setShowSubmitButton(false);
+        setSelectionMethod(null);
+        if (newHiddenNumbers.every(num => num.found)) handleGameComplete();
+      } else {
+        playSound('incorrect');
+        const gridElement = gridRef.current;
+        if (gridElement) {
+          gridElement.classList.add('animate-shake');
+          setTimeout(() => gridElement.classList.remove('animate-shake'), 500);
+        }
+        setCurrentSelection([]);
+        setShowSubmitButton(false);
+        setSelectionMethod(null);
+      }
     } else {
       playSound('incorrect');
-      if (gridRef.current) {
-        gridRef.current.classList.add('animate-shake');
-        setTimeout(() => gridRef.current.classList.remove('animate-shake'), 500);
+      const gridElement = gridRef.current;
+      if (gridElement) {
+        gridElement.classList.add('animate-shake');
+        setTimeout(() => gridElement.classList.remove('animate-shake'), 500);
       }
       setCurrentSelection([]);
       setShowSubmitButton(false);
+      setSelectionMethod(null);
     }
   };
 
@@ -318,17 +480,21 @@ const WordSearch = ({ onNavigate, onGameEnd }) => {
     const earnedStars = calculateStars(finalTime);
     setStars(earnedStars);
     hiddenNumbers.forEach(number => {
-      saveGameResult(number.id, 'word-search', earnedStars, { time_taken: finalTime });
+      saveGameResult(number.id, 'word-search', earnedStars, { time_taken: finalTime, numbers_found_count: hiddenNumbers.length, path_complexity: number.pathComplexity });
     });
-    // Added this call to update the free trial counter
+    logGeneration(`🏆 Game completed! Time: ${finalTime}s, Stars: ${earnedStars}/5`);
+    // Change 2: Call onGameEnd when the game is complete
     if (onGameEnd) {
-      setTimeout(() => onGameEnd(earnedStars, { time_taken: finalTime }), 2000);
+        onGameEnd(earnedStars, finalTime);
     }
   };
 
   const isCellSelected = (x, y) => currentSelection.some(cell => cell.x === x && cell.y === y);
   const isCellFound = (x, y) => foundNumbers.some(number => number.positions.some(pos => pos.x === x && pos.y === y));
-  const getFoundNumberIndex = (x, y) => foundNumbers.findIndex(number => number.positions.some(pos => pos.x === x && pos.y === y));
+  const getFoundNumberIndex = (x, y) => {
+    for (let i = 0; i < foundNumbers.length; i++) if (foundNumbers[i].positions.some(pos => pos.x === x && pos.y === y)) return i;
+    return -1;
+  };
   const getSelectionIndex = (x, y) => currentSelection.findIndex(cell => cell.x === x && cell.y === y);
 
   if (loading) return <div className="min-h-screen flex items-center justify-center p-6 app-container"><div className="text-center relative z-10"><div className="w-16 h-16 border-4 border-indigo-200 border-t-indigo-500 rounded-full animate-spin mb-4 mx-auto"></div><h2 className="text-2xl font-bold text-indigo-800 mb-2">Preparing Challenge</h2><p className="text-indigo-600">Loading your phone numbers...</p></div></div>;
@@ -404,7 +570,4 @@ const WordSearch = ({ onNavigate, onGameEnd }) => {
         </AnimatePresence>
       </div>
     </div>
-  );
-};
-
-export default WordSearch;
+  );};export default WordSear
