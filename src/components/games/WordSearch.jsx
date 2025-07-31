@@ -570,4 +570,4 @@ const WordSearch = ({ onNavigate, onGameEnd }) => {
         </AnimatePresence>
       </div>
     </div>
-  );};export default WordSear
+  );};export default WordSearch
