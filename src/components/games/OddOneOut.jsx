@@ -592,4 +592,5 @@ const OddOneOut = ({ onNavigate, phoneNumberId, onGameEnd }) => {
   );
 };
 
-export default OddOneO
+// There was a typo here, it should be OddOneOut
+export default OddOneOut;
