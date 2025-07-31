@@ -9,95 +9,77 @@ export const useSubscription = () => {
   const [error, setError] = useState(null);
   const { user } = useAuth();
 
-  const fetchUserData = useCallback(async () => {
-    setLoading(true); 
-    try {
-      setError(null);
-
+  useEffect(() => {
+    const fetchAndSetData = async () => {
       if (!user) {
-        setSubscription(null);
-        setUserProfile(null);
         setLoading(false);
         return;
       }
 
-      console.log('🔍 Fetching/Initializing user data for:', user.id);
-
-      // --- Fetch/Initialize Subscription Data ---
-      let { data: subData, error: subError } = await supabase
-        .from('user_subscriptions')
-        .select('*')
-        .eq('user_id', user.id)
-        .single();
-
-      if (subError && subError.code === 'PGRST116') {
-        console.log('📝 No subscription found, creating one...');
-        const { data: newSub, error: insertSubError } = await supabase
+      setLoading(true);
+      try {
+        // --- Fetch/Initialize Subscription Data ---
+        let { data: subData, error: subError } = await supabase
           .from('user_subscriptions')
-          .insert([{
-            user_id: user.id,
-            subscription_status: 'free_trial',
-            sequence_riddle_uses: 0,
-            speed_5_uses: 0,
-            word_search_uses: 0,
-            odd_one_out_uses: 0
-          }])
-          .select()
+          .select('*')
+          .eq('user_id', user.id)
           .single();
-        if (insertSubError) throw insertSubError;
-        subData = newSub;
-        console.log('✅ New subscription created and used:', subData);
-      } else if (subError) {
-        throw subError;
-      }
-      setSubscription(subData);
-      console.log('📊 Subscription data set:', subData);
 
-      // --- Fetch/Initialize Profile Data ---
-      let { data: profileData, error: profileError } = await supabase
-        .from('app_users_profile')
-        .select('*')
-        .eq('user_id', user.id)
-        .single();
+        if (subError && subError.code === 'PGRST116') {
+          const { data: newSub, error: insertSubError } = await supabase
+            .from('user_subscriptions')
+            .insert([{
+              user_id: user.id,
+              subscription_status: 'free_trial',
+              sequence_riddle_uses: 0,
+              speed_5_uses: 0,
+              word_search_uses: 0,
+              odd_one_out_uses: 0
+            }])
+            .select()
+            .single();
+          if (insertSubError) throw insertSubError;
+          subData = newSub;
+        } else if (subError) {
+          throw subError;
+        }
+        setSubscription(subData);
 
-      if (profileError && profileError.code === 'PGRST116') {
-        console.log('📝 No profile found, creating one...');
-        const { data: newProfile, error: insertProfileError } = await supabase
+        // --- Fetch/Initialize Profile Data ---
+        let { data: profileData, error: profileError } = await supabase
           .from('app_users_profile')
-          .insert([{ user_id: user.id, email: user.email, has_paid: false }])
-          .select()
+          .select('*')
+          .eq('user_id', user.id)
           .single();
-        if (insertProfileError) throw insertProfileError;
-        profileData = newProfile;
-        console.log('✅ New profile created and used:', profileData);
-      } else if (profileError) {
-        throw profileError;
+
+        if (profileError && profileError.code === 'PGRST116') {
+          const { data: newProfile, error: insertProfileError } = await supabase
+            .from('app_users_profile')
+            .insert([{ user_id: user.id, email: user.email, has_paid: false }])
+            .select()
+            .single();
+          if (insertProfileError) throw insertProfileError;
+          profileData = newProfile;
+        } else if (profileError) {
+          throw profileError;
+        }
+        setUserProfile(profileData);
+
+      } catch (err) {
+        console.error('❌ Error in fetchUserData:', err);
+        setError(err.message);
+      } finally {
+        setLoading(false);
       }
-      setUserProfile(profileData);
-      console.log('👤 Profile data set:', profileData);
+    };
 
-    } catch (err) {
-      console.error('❌ Error in fetchUserData:', err);
-      setError(err.message);
-    } finally {
-      console.log('✅ fetchUserData finished, setting loading to false.');
-      setLoading(false);
-    }
-  }, [user]);
-
-  useEffect(() => {
-    if (user) {
-      fetchUserData();
-    } else {
-      setLoading(false);
-    }
-  }, [user, fetchUserData]);
+    fetchAndSetData();
+  }, [user]); // This effect now ONLY depends on the user object.
 
   const incrementGameModeUsage = async (gameMode) => {
     try {
       if (!user || !subscription) throw new Error('User or subscription not available');
       if (subscription.subscription_status !== 'free_trial') {
-        console.log('✅ Premium user, no usage tracking needed.');
         return { success: true, data: subscription };
       }
 
@@ -109,21 +91,9 @@ export const useSubscription = () => {
       };
       const columnName = gameColumnMap[gameMode];
       if (!columnName) throw new Error(`Unknown game mode: ${gameMode}`);
-
-      console.log(`--- Starting Usage Update for ${gameMode} ---`);
-
-      const { data: currentData, error: getCurrentError } = await supabase
-        .from('user_subscriptions')
-        .select(columnName)
-        .eq('user_id', user.id)
-        .single();
-      if (getCurrentError) throw getCurrentError;
       
-      const currentUsage = currentData[columnName] || 0;
-      console.log(`1. Current plays for ${gameMode}: ${currentUsage}`);
-      
+      const currentUsage = subscription[columnName] || 0;
       const newUsage = currentUsage + 1;
-      console.log(`2. Attempting to update plays to: ${newUsage}`);
 
       const { data, error: updateError } = await supabase
         .from('user_subscriptions')
@@ -134,10 +104,7 @@ export const useSubscription = () => {
 
       if (updateError) throw updateError;
       
-      console.log(`3. Successfully updated in database. New count: ${data[columnName]}`);
-      console.log(`--- Usage Update for ${gameMode} Complete ---`);
-
-      setSubscription(data);
+      setSubscription(data); // Update local state with the new data from the database
       return { success: true, data };
     } catch (err) {
       console.error('❌ Error incrementing game mode usage:', err);
@@ -146,7 +113,7 @@ export const useSubscription = () => {
   };
 
   const canPlayGameMode = useCallback((gameMode) => {
-    if (!subscription) return false;
+    if (loading || !subscription) return false;
     if (subscription.subscription_status === 'active') return true;
     if (subscription.subscription_status === 'free_trial') {
       const gameColumnMap = {
@@ -160,10 +127,10 @@ export const useSubscription = () => {
       return (subscription[columnName] || 0) < 2;
     }
     return false;
-  }, [subscription]);
+  }, [subscription, loading]);
 
   const getRemainingUsesForGameMode = useCallback((gameMode) => {
-    if (!subscription || subscription.subscription_status !== 'free_trial') return 0;
+    if (loading || !subscription || subscription.subscription_status !== 'free_trial') return 0;
     const gameColumnMap = {
       'sequence-riddle': 'sequence_riddle_uses',
       'speed-5': 'speed_5_uses',
@@ -174,26 +141,19 @@ export const useSubscription = () => {
     if (!columnName) return 0;
     const currentUsage = subscription[columnName] || 0;
     return Math.max(0, 2 - currentUsage);
-  }, [subscription]);
-
-  const getTotalRemainingUses = useCallback(() => {
-    if (!subscription || subscription.subscription_status !== 'free_trial') return 0;
-    const gameModes = ['sequence-riddle', 'speed-5', 'word-search', 'odd-one-out'];
-    return gameModes.reduce((total, mode) => total + getRemainingUsesForGameMode(mode), 0);
-  }, [subscription, getRemainingUsesForGameMode]);
+  }, [subscription, loading]);
 
   const getUsageSummary = useCallback(() => {
-    if (!subscription) return {
-        'sequence-riddle': { used: 0, remaining: 0 },
-        'speed-5': { used: 0, remaining: 0 },
-        'word-search': { used: 0, remaining: 0 },
-        'odd-one-out': { used: 0, remaining: 0 },
+    if (loading || !subscription) return {
+        'sequence-riddle': { used: 0, remaining: 2 },
+        'speed-5': { used: 0, remaining: 2 },
+        'word-search': { used: 0, remaining: 2 },
+        'odd-one-out': { used: 0, remaining: 2 },
     };
     
     const gameModes = ['sequence-riddle', 'speed-5', 'word-search', 'odd-one-out'];
     const summary = {};
     gameModes.forEach(mode => {
-      // FINAL FIX: Correctly map the game mode ID to the database column name.
       const columnName = `${mode.replace(/-/g, '_')}_uses`;
       summary[mode] = {
         used: subscription[columnName] || 0,
@@ -201,10 +161,10 @@ export const useSubscription = () => {
       };
     });
     return summary;
-  }, [subscription, getRemainingUsesForGameMode]);
+  }, [subscription, loading, getRemainingUsesForGameMode]);
 
   const shouldShowPaywallForGameMode = useCallback((gameMode) => {
-    if (!subscription) return false;
+    if (loading || !subscription) return false;
 
     if (subscription.subscription_status === 'free_trial') {
       const gameColumnMap = {
@@ -220,7 +180,7 @@ export const useSubscription = () => {
       return currentUsage >= 2;
     }
     return false;
-  }, [subscription]);
+  }, [subscription, loading]);
 
   return {
     subscription,
@@ -230,9 +190,7 @@ export const useSubscription = () => {
     canPlayGameMode,
     getRemainingUsesForGameMode,
     incrementGameModeUsage,
-    getTotalRemainingUses,
     getUsageSummary,
     shouldShowPaywallForGameMode,
-    refetch: fetchUserData
   };
 };
