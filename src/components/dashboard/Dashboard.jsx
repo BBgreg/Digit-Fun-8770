@@ -11,9 +11,9 @@ const { FiPlus, FiList, FiLogOut, FiShield, FiTarget, FiPuzzle, FiCircle, FiFilt
 
 const Dashboard = ({ onNavigate }) => {
   const { user, signOut } = useAuth();
+  // We get the 'loading' state directly from our hook.
   const { subscription, userProfile, canPlayGameMode, getRemainingUsesForGameMode, loading } = useSubscription();
   const [showPricingModal, setShowPricingModal] = useState(false);
-  const [dashboardReady, setDashboardReady] = useState(false);
 
   const pricingPlan = {
     name: "Unlimited",
@@ -23,17 +23,6 @@ const Dashboard = ({ onNavigate }) => {
     currency: "usd",
     interval: "month"
   };
-
-  /**
-   * CRITICAL FIX: This effect now marks the dashboard as ready as soon as the
-   * subscription data has finished loading, regardless of whether a subscription exists.
-   */
-  useEffect(() => {
-    if (!loading) {
-      console.log('✅ Dashboard: Subscription data loaded, marking dashboard as ready');
-      setDashboardReady(true);
-    }
-  }, [loading]); // The dependency is now just `loading`.
 
   const handleSignOut = async () => {
     await signOut();
@@ -84,8 +73,12 @@ const Dashboard = ({ onNavigate }) => {
     }
   ];
 
-  // Show a loading indicator while the dashboard is waiting for data.
-  if (!dashboardReady) {
+  /**
+   * FINAL FIX: We now check the `loading` state from the useSubscription hook directly.
+   * This removes the extra layer of state and ensures the dashboard renders as soon as
+   * the data is available.
+   */
+  if (loading) {
     return (
       <div className="min-h-screen app-container flex items-center justify-center">
         <div className="absolute top-0 left-0 w-full h-full overflow-hidden z-0">
@@ -107,7 +100,7 @@ const Dashboard = ({ onNavigate }) => {
     );
   }
 
-  // Render the main dashboard content once it's ready.
+  // The main dashboard content will now render correctly once loading is false.
   return (
     <div className="min-h-screen app-container">
       <div className="absolute top-0 left-0 w-full h-full overflow-hidden z-0">
@@ -117,7 +110,6 @@ const Dashboard = ({ onNavigate }) => {
       </div>
 
       <div className="relative z-10 max-w-6xl mx-auto p-6">
-        {/* Header with User Info */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -141,7 +133,6 @@ const Dashboard = ({ onNavigate }) => {
           </div>
         </motion.div>
 
-        {/* Subscription Status */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -151,7 +142,6 @@ const Dashboard = ({ onNavigate }) => {
           <SubscriptionStatus subscription={subscription} userProfile={userProfile} />
         </motion.div>
 
-        {/* App Branding */}
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -196,14 +186,12 @@ const Dashboard = ({ onNavigate }) => {
           </p>
         </motion.div>
 
-        {/* Core Action Buttons */}
         <motion.div
           initial={{ opacity: 0, y: 40 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
           className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto mb-12"
         >
-          {/* Add Number */}
           <motion.div
             className="group relative overflow-hidden bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 p-10 rounded-3xl shadow-2xl cursor-pointer transform transition-all duration-300"
             whileHover={{
@@ -238,7 +226,6 @@ const Dashboard = ({ onNavigate }) => {
             </div>
           </motion.div>
 
-          {/* My Numbers */}
           <motion.div
             className="group relative overflow-hidden bg-gradient-to-br from-emerald-500 via-teal-500 to-cyan-500 p-10 rounded-3xl shadow-2xl cursor-pointer transform transition-all duration-300"
             whileHover={{
@@ -274,7 +261,6 @@ const Dashboard = ({ onNavigate }) => {
           </motion.div>
         </motion.div>
 
-        {/* Game Modes Section */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -287,7 +273,6 @@ const Dashboard = ({ onNavigate }) => {
           <div className="h-1 w-24 bg-gradient-to-r from-indigo-500 to-purple-500 mx-auto mt-2 rounded-full"></div>
         </motion.div>
         
-        {/* Game Modes Grid */}
         <motion.div
           initial={{ opacity: 0, y: 40 }}
           animate={{ opacity: 1, y: 0 }}
@@ -360,7 +345,6 @@ const Dashboard = ({ onNavigate }) => {
           })}
         </motion.div>
 
-        {/* Subscription CTA */}
         {subscription?.subscription_status === 'free_trial' && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -388,7 +372,6 @@ const Dashboard = ({ onNavigate }) => {
           </motion.div>
         )}
 
-        {/* External Apps Button */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
