@@ -96,7 +96,10 @@ export const useSubscription = () => {
   const incrementGameModeUsage = async (gameMode) => {
     try {
       if (!user || !subscription) throw new Error('User or subscription not available');
-      if (subscription.subscription_status !== 'free_trial') return { success: true, data: subscription };
+      if (subscription.subscription_status !== 'free_trial') {
+        console.log('✅ Premium user, no usage tracking needed.');
+        return { success: true, data: subscription };
+      }
 
       const gameColumnMap = {
         'sequence-riddle': 'sequence_riddle_uses',
@@ -107,6 +110,8 @@ export const useSubscription = () => {
       const columnName = gameColumnMap[gameMode];
       if (!columnName) throw new Error(`Unknown game mode: ${gameMode}`);
 
+      console.log(`--- Starting Usage Update for ${gameMode} ---`);
+
       const { data: currentData, error: getCurrentError } = await supabase
         .from('user_subscriptions')
         .select(columnName)
@@ -115,14 +120,23 @@ export const useSubscription = () => {
       if (getCurrentError) throw getCurrentError;
       
       const currentUsage = currentData[columnName] || 0;
+      console.log(`1. Current plays for ${gameMode}: ${currentUsage}`);
+      
+      const newUsage = currentUsage + 1;
+      console.log(`2. Attempting to update plays to: ${newUsage}`);
+
       const { data, error: updateError } = await supabase
         .from('user_subscriptions')
-        .update({ [columnName]: currentUsage + 1 })
+        .update({ [columnName]: newUsage })
         .eq('user_id', user.id)
         .select()
         .single();
 
       if (updateError) throw updateError;
+      
+      console.log(`3. Successfully updated in database. New count: ${data[columnName]}`);
+      console.log(`--- Usage Update for ${gameMode} Complete ---`);
+
       setSubscription(data);
       return { success: true, data };
     } catch (err) {
@@ -188,10 +202,6 @@ export const useSubscription = () => {
     return summary;
   }, [subscription, getRemainingUsesForGameMode]);
 
-  /**
-   * FINAL FIX: This function was missing. It checks if a user has used up their
-   * free plays for a specific game mode.
-   */
   const shouldShowPaywallForGameMode = useCallback((gameMode) => {
     if (!subscription) return false;
 
@@ -221,7 +231,7 @@ export const useSubscription = () => {
     incrementGameModeUsage,
     getTotalRemainingUses,
     getUsageSummary,
-    shouldShowPaywallForGameMode, // Added back for GameAccessControl
+    shouldShowPaywallForGameMode,
     refetch: fetchUserData
   };
 };
