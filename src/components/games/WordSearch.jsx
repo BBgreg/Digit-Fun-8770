@@ -35,22 +35,18 @@ const WordSearch = ({ onNavigate, onGameEnd }) => {
   const [phoneNumbers, setPhoneNumbers] = useState([]);
   const [showSubmitButton, setShowSubmitButton] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
-  const [selectionMethod, setSelectionMethod] = useState(null);
-  const [mouseDownTime, setMouseDownTime] = useState(null);
-  const [hasMouseMoved, setHasMouseMoved] = useState(false);
   const [mouseDownCell, setMouseDownCell] = useState(null);
   const [generationAttempts, setGenerationAttempts] = useState(0);
-  
+  const [loadingMessage, setLoadingMessage] = useState('Preparing your challenge...');
+
   const timerRef = useRef(null);
   const gridRef = useRef(null);
   const { saveGameResult } = useGameProgress();
   const { user } = useAuth();
 
   const DIRECTIONS = [
-    { dx: 1, dy: 0, name: 'right' }, { dx: -1, dy: 0, name: 'left' },
-    { dx: 0, dy: 1, name: 'down' }, { dx: 0, dy: -1, name: 'up' },
-    { dx: 1, dy: 1, name: 'down-right' }, { dx: -1, dy: -1, name: 'up-left' },
-    { dx: 1, dy: -1, name: 'up-right' }, { dx: -1, dy: 1, name: 'down-left' }
+    { dx: 1, dy: 0 }, { dx: -1, dy: 0 }, { dx: 0, dy: 1 }, { dx: 0, dy: -1 },
+    { dx: 1, dy: 1 }, { dx: -1, dy: -1 }, { dx: 1, dy: -1 }, { dx: -1, dy: 1 }
   ];
 
   const formatTime = (seconds) => {
@@ -68,56 +64,40 @@ const WordSearch = ({ onNavigate, onGameEnd }) => {
     return 0;
   };
 
+  const fetchPhoneNumbers = useCallback(async () => {
+    try {
+      setLoading(true);
+      if (!user) {
+        setError("You must be logged in to play this game");
+        return;
+      }
+      const { data, error: fetchError } = await supabase
+        .from('user_phone_numbers')
+        .select('id, contact_name, phone_number_digits')
+        .eq('user_id', user.id);
+      if (fetchError) throw fetchError;
+      if (!data || data.length < 1) {
+        setError("Please add at least one phone number to play Word Search.");
+        return;
+      }
+      setPhoneNumbers(data);
+    } catch (err) {
+      setError('Failed to retrieve your phone numbers.');
+    } finally {
+      setLoading(false);
+    }
+  }, [user]);
+
   useEffect(() => {
-    const fetchPhoneNumbers = async () => {
-      try {
-        setLoading(true);
-        if (!user) {
-          setError("You must be logged in to play this game");
-          setLoading(false);
-          return;
-        }
-        const { data, error: fetchError } = await supabase
-          .from('user_phone_numbers')
-          .select('id, contact_name, phone_number_digits')
-          .eq('user_id', user.id);
-        if (fetchError) throw fetchError;
-        if (!data || data.length < 1) { // Need at least 1 number
-          setError("Please add at least one phone number to play Word Search.");
-          setLoading(false);
-          return;
-        }
-        setPhoneNumbers(data);
-        setLoading(false);
-      } catch (err) {
-        setError('Failed to retrieve your phone numbers. Please try again.');
-        setLoading(false);
-      }
-    };
     fetchPhoneNumbers();
-
-    const handleGlobalMouseUp = () => {
-      if (isDragging) {
-        if (currentSelection.length === 10) {
-          setTimeout(() => handleSubmit(), 100);
-        }
-      }
-      setIsDragging(false);
-      setMouseDownCell(null);
-      setHasMouseMoved(false);
-    };
-
-    document.addEventListener('mouseup', handleGlobalMouseUp);
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
-      document.removeEventListener('mouseup', handleGlobalMouseUp);
     };
-  }, [user]);
+  }, [fetchPhoneNumbers]);
 
   const generateComplexPath = useCallback((startRow, startCol, digits, occupiedCells) => {
     const path = [{ row: startRow, col: startCol }];
     const visited = new Set([`${startRow}-${startCol}`]);
-
     const findPath = (currentRow, currentCol, digitIndex) => {
       if (digitIndex >= digits.length) return true;
       const shuffledDirections = [...DIRECTIONS].sort(() => Math.random() - 0.5);
@@ -135,16 +115,15 @@ const WordSearch = ({ onNavigate, onGameEnd }) => {
       }
       return false;
     };
-
     if (findPath(startRow, startCol, 1)) {
-        let directionChanges = 0;
-        for (let i = 2; i < path.length; i++) {
-            const dir1 = { dx: path[i-1].col - path[i-2].col, dy: path[i-1].row - path[i-2].row };
-            const dir2 = { dx: path[i].col - path[i-1].col, dy: path[i].row - path[i-1].row };
-            if (dir1.dx !== dir2.dx || dir1.dy !== dir2.dy) directionChanges++;
-        }
-        if (directionChanges < 3) return null; // Ensure complexity
-        return path;
+      let directionChanges = 0;
+      for (let i = 2; i < path.length; i++) {
+        const dir1 = { dx: path[i - 1].col - path[i - 2].col, dy: path[i - 1].row - path[i - 2].row };
+        const dir2 = { dx: path[i].col - path[i - 1].col, dy: path[i].row - path[i - 1].row };
+        if (dir1.dx !== dir2.dx || dir1.dy !== dir2.dy) directionChanges++;
+      }
+      if (directionChanges < 3) return null;
+      return path;
     }
     return null;
   }, []);
@@ -152,13 +131,10 @@ const WordSearch = ({ onNavigate, onGameEnd }) => {
   const generateGrid = useCallback(() => {
     const currentAttempt = generationAttempts + 1;
     setGenerationAttempts(currentAttempt);
-    
     if (phoneNumbers.length === 0) return { error: "No phone numbers available." };
-
     const newGrid = Array(GRID_ROWS).fill().map(() => Array(GRID_COLS).fill(null));
     const numbersWithPositions = [];
     const occupiedCells = new Set();
-
     const selectedNumbers = [];
     let availablePhoneNumbers = [...phoneNumbers];
     while (selectedNumbers.length < TOTAL_HIDDEN_NUMBERS) {
@@ -166,14 +142,12 @@ const WordSearch = ({ onNavigate, onGameEnd }) => {
       const randomIndex = Math.floor(Math.random() * availablePhoneNumbers.length);
       selectedNumbers.push(availablePhoneNumbers.splice(randomIndex, 1)[0]);
     }
-
     for (const number of selectedNumbers) {
       let placed = false;
-      for (let i = 0; i < 2000; i++) { // Placement attempts
+      for (let i = 0; i < 2000; i++) {
         const startRow = Math.floor(Math.random() * GRID_ROWS);
         const startCol = Math.floor(Math.random() * GRID_COLS);
         if (occupiedCells.has(`${startRow}-${startCol}`)) continue;
-
         const path = generateComplexPath(startRow, startCol, number.phone_number_digits.split(''), occupiedCells);
         if (path) {
           path.forEach((pos, digitIndex) => {
@@ -193,24 +167,19 @@ const WordSearch = ({ onNavigate, onGameEnd }) => {
         }
       }
       if (!placed) {
-        if (currentAttempt < 50) return generateGrid(); // Retry grid generation
+        if (currentAttempt < 50) return generateGrid();
         return { error: "Couldn't generate a solvable puzzle." };
       }
     }
-
     if (numbersWithPositions.length !== TOTAL_HIDDEN_NUMBERS) {
-        if (currentAttempt < 50) return generateGrid();
-        return { error: "Couldn't place all numbers." };
+      if (currentAttempt < 50) return generateGrid();
+      return { error: "Couldn't place all numbers." };
     }
-
     for (let r = 0; r < GRID_ROWS; r++) {
       for (let c = 0; c < GRID_COLS; c++) {
-        if (newGrid[r][c] === null) {
-          newGrid[r][c] = Math.floor(Math.random() * 10).toString();
-        }
+        if (newGrid[r][c] === null) newGrid[r][c] = Math.floor(Math.random() * 10).toString();
       }
     }
-    
     setGenerationAttempts(0);
     return { grid: newGrid, hiddenNumbers: numbersWithPositions };
   }, [phoneNumbers, generationAttempts, generateComplexPath]);
@@ -219,6 +188,7 @@ const WordSearch = ({ onNavigate, onGameEnd }) => {
     setIsPreGame(false);
     setGameStarted(true);
     setIsGeneratingGrid(true);
+    setLoadingMessage('Designing your unique puzzle...');
     setTimeout(() => {
       const result = generateGrid();
       if (result.error) {
@@ -266,7 +236,7 @@ const WordSearch = ({ onNavigate, onGameEnd }) => {
       setShowSubmitButton(false);
     }
   };
-
+  
   const handleCellMouseDown = (e, x, y) => {
     if (gameComplete || isCellFound(x, y)) return;
     setMouseDownTime(Date.now());
@@ -355,9 +325,9 @@ const WordSearch = ({ onNavigate, onGameEnd }) => {
       {showConfetti && <Confetti />}
       <div className="relative z-10 max-w-4xl mx-auto p-6">
         <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="flex items-center justify-between mb-8">
-            <button onClick={() => onNavigate('dashboard')} className="p-3 bg-white rounded-2xl shadow-md hover:shadow-lg transition-shadow text-indigo-600 hover:text-indigo-800"><SafeIcon icon={FiArrowLeft} size={20} /></button>
-            <div className="text-center"><h2 className="text-2xl font-bold text-indigo-800">Word Search</h2><p className="text-indigo-600">Find hidden phone numbers!</p></div>
-            <div className="flex items-center gap-2 bg-gradient-to-r from-purple-500 to-indigo-600 px-4 py-2 rounded-xl shadow-md text-white"><SafeIcon icon={FiClock} className="text-white" /><span className="font-bold">{formatTime(elapsedTime)}</span></div>
+          <button onClick={() => onNavigate('dashboard')} className="p-3 bg-white rounded-2xl shadow-md hover:shadow-lg transition-shadow text-indigo-600 hover:text-indigo-800"><SafeIcon icon={FiArrowLeft} size={20} /></button>
+          <div className="text-center"><h2 className="text-2xl font-bold text-indigo-800">Word Search</h2><p className="text-indigo-600">Find hidden phone numbers!</p></div>
+          <div className="flex items-center gap-2 bg-gradient-to-r from-purple-500 to-indigo-600 px-4 py-2 rounded-xl shadow-md text-white"><SafeIcon icon={FiClock} className="text-white" /><span className="font-bold">{formatTime(elapsedTime)}</span></div>
         </motion.div>
         {isPreGame && (
           <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="bg-white bg-opacity-90 backdrop-filter backdrop-blur-sm p-8 rounded-3xl shadow-xl text-center">
@@ -367,7 +337,7 @@ const WordSearch = ({ onNavigate, onGameEnd }) => {
             <motion.button onClick={startGame} className="bg-gradient-to-br from-indigo-500 to-purple-600 text-white px-8 py-4 rounded-2xl font-semibold shadow-lg hover:shadow-xl">Start Challenge</motion.button>
           </motion.div>
         )}
-        {isGeneratingGrid && (<div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50"><div className="text-white text-2xl">Generating your puzzle...</div></div>)}
+        {isGeneratingGrid && (<div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50"><div className="text-white text-2xl">{loadingMessage}</div></div>)}
         {gameStarted && !isPreGame && !isGeneratingGrid && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col items-center">
             <motion.div ref={gridRef} className="bg-white p-6 rounded-3xl shadow-lg mb-6 select-none">
