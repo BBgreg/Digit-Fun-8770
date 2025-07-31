@@ -74,7 +74,7 @@ export const useSubscription = () => {
     };
 
     fetchAndSetData();
-  }, [user]); // This effect now ONLY depends on the user object.
+  }, [user]);
 
   const incrementGameModeUsage = async (gameMode) => {
     try {
@@ -104,7 +104,7 @@ export const useSubscription = () => {
 
       if (updateError) throw updateError;
       
-      setSubscription(data); // Update local state with the new data from the database
+      setSubscription(data);
       return { success: true, data };
     } catch (err) {
       console.error('❌ Error incrementing game mode usage:', err);
@@ -181,6 +181,12 @@ export const useSubscription = () => {
     }
     return false;
   }, [subscription, loading]);
+  
+  const getTotalRemainingUses = useCallback(() => {
+    if (!subscription || subscription.subscription_status !== 'free_trial') return 0;
+    const gameModes = ['sequence-riddle', 'speed-5', 'word-search', 'odd-one-out'];
+    return gameModes.reduce((total, mode) => total + getRemainingUsesForGameMode(mode), 0);
+  }, [subscription, getRemainingUsesForGameMode]);
 
   return {
     subscription,
@@ -192,5 +198,6 @@ export const useSubscription = () => {
     incrementGameModeUsage,
     getUsageSummary,
     shouldShowPaywallForGameMode,
+    getTotalRemainingUses, // FINAL FIX: This function is now correctly returned.
   };
 };
