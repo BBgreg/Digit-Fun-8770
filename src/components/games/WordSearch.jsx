@@ -17,7 +17,7 @@ const CELL_SIZE = 48;
 const CELL_GAP = 8;
 
 const WordSearch = ({ onNavigate, onGameEnd }) => {
-  // Game states
+  // Game states (restored to original)
   const [isPreGame, setIsPreGame] = useState(true);
   const [gameStarted, setGameStarted] = useState(false);
   const [gameComplete, setGameComplete] = useState(false);
@@ -36,16 +36,19 @@ const WordSearch = ({ onNavigate, onGameEnd }) => {
   const [showSubmitButton, setShowSubmitButton] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [mouseDownCell, setMouseDownCell] = useState(null);
+  const [generationAttempts, setGenerationAttempts] = useState(0);
   const [loadingMessage, setLoadingMessage] = useState('Preparing your challenge...');
-
+  
   const timerRef = useRef(null);
   const gridRef = useRef(null);
   const { saveGameResult } = useGameProgress();
   const { user } = useAuth();
 
   const DIRECTIONS = [
-    { dx: 1, dy: 0 }, { dx: -1, dy: 0 }, { dx: 0, dy: 1 }, { dx: 0, dy: -1 },
-    { dx: 1, dy: 1 }, { dx: -1, dy: -1 }, { dx: 1, dy: -1 }, { dx: -1, dy: 1 }
+    { dx: 1, dy: 0, name: 'right' }, { dx: -1, dy: 0, name: 'left' },
+    { dx: 0, dy: 1, name: 'down' }, { dx: 0, dy: -1, name: 'up' },
+    { dx: 1, dy: 1, name: 'down-right' }, { dx: -1, dy: -1, name: 'up-left' },
+    { dx: 1, dy: -1, name: 'up-right' }, { dx: -1, dy: 1, name: 'down-left' }
   ];
 
   const formatTime = (seconds) => {
@@ -94,43 +97,72 @@ const WordSearch = ({ onNavigate, onGameEnd }) => {
     };
   }, [fetchPhoneNumbers]);
 
+  // Restored your original complex path generation logic
+  const generateComplexPath = useCallback((startRow, startCol, digits, occupiedCells) => {
+    const path = [{ row: startRow, col: startCol }];
+    const visited = new Set([`${startRow}-${startCol}`]);
+
+    const findPath = (currentRow, currentCol, digitIndex) => {
+      if (digitIndex >= digits.length) return true;
+      const shuffledDirections = [...DIRECTIONS].sort(() => Math.random() - 0.5);
+      for (const direction of shuffledDirections) {
+        const newRow = currentRow + direction.dy;
+        const newCol = currentCol + direction.dx;
+        const cellKey = `${newRow}-${newCol}`;
+        if (newRow >= 0 && newRow < GRID_ROWS && newCol >= 0 && newCol < GRID_COLS && !occupiedCells.has(cellKey) && !visited.has(cellKey)) {
+          path.push({ row: newRow, col: newCol });
+          visited.add(cellKey);
+          if (findPath(newRow, newCol, digitIndex + 1)) return true;
+          path.pop();
+          visited.delete(cellKey);
+        }
+      }
+      return false;
+    };
+
+    if (findPath(startRow, startCol, 1)) {
+        let directionChanges = 0;
+        for (let i = 2; i < path.length; i++) {
+            const dir1 = { dx: path[i-1].col - path[i-2].col, dy: path[i-1].row - path[i-2].row };
+            const dir2 = { dx: path[i].col - path[i-1].col, dy: path[i].row - path[i-1].row };
+            if (dir1.dx !== dir2.dx || dir1.dy !== dir2.dy) directionChanges++;
+        }
+        if (directionChanges < 3) return null;
+        return path;
+    }
+    return null;
+  }, []);
+
+  // Restored your original grid generation logic
   const generateGrid = useCallback(() => {
+    const currentAttempt = generationAttempts + 1;
+    setGenerationAttempts(currentAttempt);
+    
     if (phoneNumbers.length === 0) return { error: "No phone numbers available." };
 
     const newGrid = Array(GRID_ROWS).fill().map(() => Array(GRID_COLS).fill(null));
     const numbersWithPositions = [];
     const occupiedCells = new Set();
-    
+
     const selectedForGame = [];
     let pool = [...phoneNumbers];
     for(let i=0; i<TOTAL_HIDDEN_NUMBERS; i++) {
-        if(pool.length === 0) pool = [...phoneNumbers]; // Refill if not enough unique numbers
+        if(pool.length === 0) pool = [...phoneNumbers];
         const randIndex = Math.floor(Math.random() * pool.length);
         selectedForGame.push(pool.splice(randIndex, 1)[0]);
     }
 
     for (const number of selectedForGame) {
       let placed = false;
-      for (let attempt = 0; attempt < 100; attempt++) {
-        const direction = DIRECTIONS[Math.floor(Math.random() * DIRECTIONS.length)];
+      for (let i = 0; i < 2000; i++) {
         const startRow = Math.floor(Math.random() * GRID_ROWS);
         const startCol = Math.floor(Math.random() * GRID_COLS);
+        if (occupiedCells.has(`${startRow}-${startCol}`)) continue;
 
-        let canPlace = true;
-        const path = [];
-        for (let i = 0; i < 10; i++) {
-          const row = startRow + i * direction.dy;
-          const col = startCol + i * direction.dx;
-          if (row < 0 || row >= GRID_ROWS || col < 0 || col >= GRID_COLS || (occupiedCells.has(`${row}-${col}`) && newGrid[row][col] !== number.phone_number_digits[i])) {
-            canPlace = false;
-            break;
-          }
-          path.push({ row, col });
-        }
-
-        if (canPlace) {
-          path.forEach((pos, i) => {
-            newGrid[pos.row][pos.col] = number.phone_number_digits[i];
+        const path = generateComplexPath(startRow, startCol, number.phone_number_digits.split(''), occupiedCells);
+        if (path) {
+          path.forEach((pos, digitIndex) => {
+            newGrid[pos.row][pos.col] = number.phone_number_digits[digitIndex];
             occupiedCells.add(`${pos.row}-${pos.col}`);
           });
           numbersWithPositions.push({
@@ -139,27 +171,34 @@ const WordSearch = ({ onNavigate, onGameEnd }) => {
             digits: number.phone_number_digits,
             positions: path.map(p => ({ x: p.col, y: p.row })),
             found: false,
+            exactPath: path.map(p => ({ x: p.col, y: p.row }))
           });
           placed = true;
           break;
         }
       }
       if (!placed) {
-          // If a number can't be placed, it's better to try generating the whole grid again
-          return generateGrid(); 
+        if (currentAttempt < 50) return generateGrid();
+        return { error: "Couldn't generate a solvable puzzle." };
       }
+    }
+
+    if (numbersWithPositions.length !== TOTAL_HIDDEN_NUMBERS) {
+        if (currentAttempt < 50) return generateGrid();
+        return { error: "Couldn't place all numbers." };
     }
 
     for (let r = 0; r < GRID_ROWS; r++) {
       for (let c = 0; c < GRID_COLS; c++) {
-        if (newGrid[r][c] === null) {
-          newGrid[r][c] = Math.floor(Math.random() * 10).toString();
-        }
+        if (newGrid[r][c] === null) newGrid[r][c] = Math.floor(Math.random() * 10).toString();
       }
     }
+    
+    setGenerationAttempts(0);
     return { grid: newGrid, hiddenNumbers: numbersWithPositions };
-  }, [phoneNumbers]);
+  }, [phoneNumbers, generationAttempts, generateComplexPath]);
 
+  // Added a small timeout to fix the "stuck on loading" screen
   const startGame = () => {
     setIsPreGame(false);
     setGameStarted(true);
@@ -281,6 +320,7 @@ const WordSearch = ({ onNavigate, onGameEnd }) => {
     hiddenNumbers.forEach(number => {
       saveGameResult(number.id, 'word-search', earnedStars, { time_taken: finalTime });
     });
+    // Added this call to update the free trial counter
     if (onGameEnd) {
       setTimeout(() => onGameEnd(earnedStars, { time_taken: finalTime }), 2000);
     }
