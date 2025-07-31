@@ -1,29 +1,35 @@
-import React, { createContext, useContext, useState, useEffect } from 'react'
-import supabase from '../lib/supabase'
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import supabase from '../lib/supabase';
 
-const AuthContext = createContext({})
+const AuthContext = createContext({});
 
 export const useAuth = () => {
-  const context = useContext(AuthContext)
+  const context = useContext(AuthContext);
   if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider')
+    throw new Error('useAuth must be used within an AuthProvider');
   }
-  return context
-}
+  return context;
+};
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [isAuthReady, setIsAuthReady] = useState(false) // 🚀 NEW: Track when auth state is resolved
-  const [error, setError] = useState(null)
-  const [navigateToScreen, setNavigateToScreen] = useState(null)
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [isAuthReady, setIsAuthReady] = useState(false);
+  const [error, setError] = useState(null);
+  const [navigateToScreen, setNavigateToScreen] = useState(null);
 
+  /**
+   * This useEffect hook runs only once when the component mounts.
+   * It's responsible for two things:
+   * 1. Checking if there's an existing user session.
+   * 2. Setting up a listener for any future authentication changes (sign in, sign out).
+   */
   useEffect(() => {
-    // Check active sessions and sets the user
+    // 1. Check for an active session when the app loads.
     const getSession = async () => {
       try {
         console.log('🔍 AuthContext: Checking for active session...');
-        const { data: { session }, error } = await supabase.auth.getSession()
+        const { data: { session }, error } = await supabase.auth.getSession();
         
         if (error) {
           console.error('❌ AuthContext: Session error:', error);
@@ -38,144 +44,110 @@ export const AuthProvider = ({ children }) => {
         console.error('❌ AuthContext: Error getting session:', err);
         setError(err.message);
       } finally {
-        setLoading(false);
-        // 🚀 CRITICAL: Mark auth as ready after initial session check
+        // CRITICAL: Mark auth as ready after the initial check is complete.
+        // This tells the rest of the app it can now render based on the auth state.
         console.log('✅ AuthContext: Initial auth check complete - marking as ready');
         setIsAuthReady(true);
       }
-    }
+    };
 
-    getSession()
+    getSession();
 
-    // Listen for changes on auth state (logged in, signed out, etc.)
+    // 2. Listen for future changes in authentication state.
     const { data: { subscription } } = supabase.auth.onAuthStateChanged(
       async (event, session) => {
-        console.log('🔥 AuthContext: Auth state changed:', event, session?.user?.id || 'no user');
+        console.log(`🔥 AuthContext: Auth state changed: ${event}`, session?.user?.id || 'no user');
         
-        if (session?.user) {
-          setUser(session.user);
-          // 🚀 CRITICAL: IMMEDIATE DASHBOARD NAVIGATION ON SUCCESSFUL SIGN-IN
-          if (event === 'SIGNED_IN') {
-            console.log('🚀🚀🚀 AuthContext: SIGNED_IN event detected - IMMEDIATE navigation to dashboard');
-            setNavigateToScreen('dashboard');
-          }
-        } else {
-          setUser(null);
-          // Clear navigation target when user signs out
-          setNavigateToScreen(null);
-        }
-        
+        setUser(session?.user ?? null);
         setLoading(false);
-        // 🚀 CRITICAL: Ensure auth is marked as ready on state changes
-        if (!isAuthReady) {
-          console.log('✅ AuthContext: Auth state change - marking as ready');
-          setIsAuthReady(true);
+
+        // If a user signs in, set the navigation target to the dashboard.
+        if (event === 'SIGNED_IN') {
+          console.log('🚀 AuthContext: SIGNED_IN event detected - setting navigation to dashboard');
+          setNavigateToScreen('dashboard');
         }
       }
-    )
+    );
 
-    return () => subscription.unsubscribe()
-  }, [isAuthReady])
+    // Cleanup function: Unsubscribe from the listener when the component unmounts.
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []); // <-- THE FIX: The dependency array is now empty, so this runs only once.
 
   const signUp = async (email, password) => {
     try {
-      setError(null)
+      setError(null);
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
           emailRedirectTo: window.location.origin,
-          data: {
-            confirmed_at: null
-          }
-        }
-      })
+        },
+      });
 
-      if (error) throw error
-
+      if (error) throw error;
       console.log('✅ AuthContext: Sign up successful:', data?.user?.id);
-      return { success: true, data }
+      return { success: true, data };
     } catch (err) {
       console.error('❌ AuthContext: Sign up error:', err);
-      setError(err.message)
-      return { success: false, error: err }
+      setError(err.message);
+      return { success: false, error: err };
     }
-  }
+  };
 
-  // 🚀 CRITICAL: ENHANCED SIGN-IN WITH GUARANTEED NAVIGATION
   const signIn = async (email, password) => {
     try {
-      setError(null)
-      console.log('🔥 AuthContext: Starting sign-in process...');
-
+      setError(null);
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
-      })
+      });
 
-      if (error) {
-        console.error('🚨 AuthContext: Sign-in error:', error);
-        return { success: false, error }
-      }
-
-      if (data?.user) {
-        console.log('🚀 AuthContext: Sign-in SUCCESS for user:', data.user.id);
-        setUser(data.user);
-        
-        // 🚀🚀🚀 CRITICAL: IMMEDIATE NAVIGATION TARGET SET
-        console.log('🚀🚀🚀 AuthContext: Setting IMMEDIATE navigation to dashboard');
-        setNavigateToScreen('dashboard');
-        
-        return { success: true, data, user: data.user }
-      } else {
-        console.error('🚨 AuthContext: No user data returned from sign-in');
-        return { success: false, error: { message: 'No user data received' } }
-      }
+      if (error) throw error;
+      // The onAuthStateChanged listener will handle setting the user and navigation.
+      return { success: true, data };
     } catch (err) {
-      console.error('🚨 AuthContext: Unexpected sign-in error:', err);
-      setError(err.message)
-      return { success: false, error: err }
+      console.error('🚨 AuthContext: Sign-in error:', err);
+      setError(err.message);
+      return { success: false, error: err };
     }
-  }
+  };
 
   const signOut = async () => {
     try {
-      setError(null)
-      const { error } = await supabase.auth.signOut()
-      if (error) throw error
-
-      setUser(null);
-      setNavigateToScreen(null);
-      console.log('✅ AuthContext: Sign out successful');
-      return { success: true }
+      setError(null);
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      // The onAuthStateChanged listener will handle clearing the user.
+      return { success: true };
     } catch (err) {
       console.error('❌ AuthContext: Sign out error:', err);
-      setError(err.message)
-      return { success: false, error: err.message }
+      setError(err.message);
+      return { success: false, error: err.message };
     }
-  }
+  };
 
-  // Clear navigation target after it's been processed
+  // Function for App.jsx to call after it has navigated.
   const clearNavigationTarget = () => {
-    console.log('🔥 AuthContext: Clearing navigation target');
     setNavigateToScreen(null);
-  }
+  };
 
   const value = {
     user,
     loading,
-    isAuthReady, // 🚀 NEW: Export isAuthReady state
+    isAuthReady,
     error,
     signUp,
     signIn,
     signOut,
     navigateToScreen,
-    clearNavigationTarget
-  }
+    clearNavigationTarget,
+  };
 
   return (
     <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
-  )
-}
+  );
+};
