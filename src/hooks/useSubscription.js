@@ -10,7 +10,6 @@ export const useSubscription = () => {
   const { user } = useAuth();
 
   const fetchUserData = useCallback(async () => {
-    // This function now starts by setting loading to true, which is correct.
     setLoading(true); 
     try {
       setError(null);
@@ -18,7 +17,7 @@ export const useSubscription = () => {
       if (!user) {
         setSubscription(null);
         setUserProfile(null);
-        setLoading(false); // Ensure loading is false if there's no user
+        setLoading(false);
         return;
       }
 
@@ -90,7 +89,6 @@ export const useSubscription = () => {
     if (user) {
       fetchUserData();
     } else {
-      // If there's no user, we are not loading.
       setLoading(false);
     }
   }, [user, fetchUserData]);
@@ -171,8 +169,6 @@ export const useSubscription = () => {
   }, [subscription, getRemainingUsesForGameMode]);
 
   const getUsageSummary = useCallback(() => {
-    // FINAL FIX: Return an empty object if subscription is not yet loaded.
-    // This prevents the "Cannot read properties of undefined" error.
     if (!subscription) return {
         'sequence-riddle': { used: 0, remaining: 0 },
         'speed-5': { used: 0, remaining: 0 },
@@ -183,7 +179,7 @@ export const useSubscription = () => {
     const gameModes = ['sequence-riddle', 'speed-5', 'word-search', 'odd-one-out'];
     const summary = {};
     gameModes.forEach(mode => {
-      const columnName = `${mode}_uses`;
+      const columnName = `${mode.replace('-', '_')}_uses`;
       summary[mode] = {
         used: subscription[columnName] || 0,
         remaining: getRemainingUsesForGameMode(mode)
@@ -191,6 +187,29 @@ export const useSubscription = () => {
     });
     return summary;
   }, [subscription, getRemainingUsesForGameMode]);
+
+  /**
+   * FINAL FIX: This function was missing. It checks if a user has used up their
+   * free plays for a specific game mode.
+   */
+  const shouldShowPaywallForGameMode = useCallback((gameMode) => {
+    if (!subscription) return false;
+
+    if (subscription.subscription_status === 'free_trial') {
+      const gameColumnMap = {
+        'sequence-riddle': 'sequence_riddle_uses',
+        'speed-5': 'speed_5_uses',
+        'word-search': 'word_search_uses',
+        'odd-one-out': 'odd_one_out_uses'
+      };
+      const columnName = gameColumnMap[gameMode];
+      if (!columnName) return false;
+      
+      const currentUsage = subscription[columnName] || 0;
+      return currentUsage >= 2;
+    }
+    return false;
+  }, [subscription]);
 
   return {
     subscription,
@@ -202,6 +221,7 @@ export const useSubscription = () => {
     incrementGameModeUsage,
     getTotalRemainingUses,
     getUsageSummary,
+    shouldShowPaywallForGameMode, // Added back for GameAccessControl
     refetch: fetchUserData
   };
 };
