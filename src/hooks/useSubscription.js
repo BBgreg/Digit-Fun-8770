@@ -9,11 +9,6 @@ export const useSubscription = () => {
   const [error, setError] = useState(null);
   const { user } = useAuth();
 
-  /**
-   * This is the main data fetching function. It has been rewritten to be more robust.
-   * It attempts to fetch user data, and if the data doesn't exist (for a new user),
-   * it creates the necessary records and uses the newly created data in a single flow.
-   */
   const fetchUserData = useCallback(async () => {
     try {
       setLoading(true);
@@ -34,7 +29,7 @@ export const useSubscription = () => {
         .eq('user_id', user.id)
         .single();
 
-      if (subError && subError.code === 'PGRST116') { // 'PGRST116' means no rows found
+      if (subError && subError.code === 'PGRST116') {
         console.log('📝 No subscription found, creating one...');
         const { data: newSub, error: insertSubError } = await supabase
           .from('user_subscriptions')
@@ -89,10 +84,11 @@ export const useSubscription = () => {
     }
   }, [user]);
 
-  // This effect runs whenever the user's authentication state changes.
   useEffect(() => {
-    fetchUserData();
-  }, [fetchUserData]);
+    if (user) {
+      fetchUserData();
+    }
+  }, [user, fetchUserData]);
 
   const incrementGameModeUsage = async (gameMode) => {
     try {
@@ -132,7 +128,7 @@ export const useSubscription = () => {
     }
   };
 
-  const canPlayGameMode = (gameMode) => {
+  const canPlayGameMode = useCallback((gameMode) => {
     if (!subscription) return false;
     if (subscription.subscription_status === 'active') return true;
     if (subscription.subscription_status === 'free_trial') {
@@ -147,9 +143,9 @@ export const useSubscription = () => {
       return (subscription[columnName] || 0) < 2;
     }
     return false;
-  };
+  }, [subscription]);
 
-  const getRemainingUsesForGameMode = (gameMode) => {
+  const getRemainingUsesForGameMode = useCallback((gameMode) => {
     if (!subscription || subscription.subscription_status !== 'free_trial') return 0;
     const gameColumnMap = {
       'sequence-riddle': 'sequence_riddle_uses',
@@ -161,7 +157,26 @@ export const useSubscription = () => {
     if (!columnName) return 0;
     const currentUsage = subscription[columnName] || 0;
     return Math.max(0, 2 - currentUsage);
-  };
+  }, [subscription]);
+
+  const getTotalRemainingUses = useCallback(() => {
+    if (!subscription || subscription.subscription_status !== 'free_trial') return 0;
+    const gameModes = ['sequence-riddle', 'speed-5', 'word-search', 'odd-one-out'];
+    return gameModes.reduce((total, mode) => total + getRemainingUsesForGameMode(mode), 0);
+  }, [subscription, getRemainingUsesForGameMode]);
+
+  const getUsageSummary = useCallback(() => {
+    if (!subscription) return {};
+    const gameModes = ['sequence-riddle', 'speed-5', 'word-search', 'odd-one-out'];
+    const summary = {};
+    gameModes.forEach(mode => {
+      summary[mode] = {
+        used: subscription[mode + '_uses'] || 0,
+        remaining: getRemainingUsesForGameMode(mode)
+      };
+    });
+    return summary;
+  }, [subscription, getRemainingUsesForGameMode]);
 
   return {
     subscription,
@@ -171,6 +186,8 @@ export const useSubscription = () => {
     canPlayGameMode,
     getRemainingUsesForGameMode,
     incrementGameModeUsage,
+    getTotalRemainingUses, // Restored for SubscriptionStatus
+    getUsageSummary,      // Restored for SubscriptionStatus
     refetch: fetchUserData
   };
 };
