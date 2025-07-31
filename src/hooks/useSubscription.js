@@ -193,7 +193,8 @@ export const useSubscription = () => {
     const gameModes = ['sequence-riddle', 'speed-5', 'word-search', 'odd-one-out'];
     const summary = {};
     gameModes.forEach(mode => {
-      const columnName = `${mode.replace('-', '_')}_uses`;
+      // FINAL FIX: Correctly map the game mode ID to the database column name.
+      const columnName = `${mode.replace(/-/g, '_')}_uses`;
       summary[mode] = {
         used: subscription[columnName] || 0,
         remaining: getRemainingUsesForGameMode(mode)
