@@ -18,24 +18,13 @@ export const AuthProvider = ({ children }) => {
   const [error, setError] = useState(null);
   const [navigateToScreen, setNavigateToScreen] = useState(null);
 
-  /**
-   * This useEffect hook runs only once when the component mounts.
-   * It's responsible for two things:
-   * 1. Checking if there's an existing user session.
-   * 2. Setting up a listener for any future authentication changes (sign in, sign out).
-   */
   useEffect(() => {
     // 1. Check for an active session when the app loads.
     const getSession = async () => {
       try {
         console.log('🔍 AuthContext: Checking for active session...');
-        const { data: { session }, error } = await supabase.auth.getSession();
+        const { data: { session } } = await supabase.auth.getSession();
         
-        if (error) {
-          console.error('❌ AuthContext: Session error:', error);
-          throw error;
-        }
-
         console.log('📊 AuthContext: Session data:', session ? 'Session found' : 'No active session');
         if (session?.user) {
           setUser(session.user);
@@ -45,7 +34,6 @@ export const AuthProvider = ({ children }) => {
         setError(err.message);
       } finally {
         // CRITICAL: Mark auth as ready after the initial check is complete.
-        // This tells the rest of the app it can now render based on the auth state.
         console.log('✅ AuthContext: Initial auth check complete - marking as ready');
         setIsAuthReady(true);
       }
@@ -54,14 +42,14 @@ export const AuthProvider = ({ children }) => {
     getSession();
 
     // 2. Listen for future changes in authentication state.
-    const { data: { subscription } } = supabase.auth.onAuthStateChanged(
-      async (event, session) => {
+    // THE FIX IS ON THE NEXT LINE: onAuthStateChanged -> onAuthStateChange
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
         console.log(`🔥 AuthContext: Auth state changed: ${event}`, session?.user?.id || 'no user');
         
         setUser(session?.user ?? null);
         setLoading(false);
 
-        // If a user signs in, set the navigation target to the dashboard.
         if (event === 'SIGNED_IN') {
           console.log('🚀 AuthContext: SIGNED_IN event detected - setting navigation to dashboard');
           setNavigateToScreen('dashboard');
@@ -73,7 +61,7 @@ export const AuthProvider = ({ children }) => {
     return () => {
       subscription.unsubscribe();
     };
-  }, []); // <-- THE FIX: The dependency array is now empty, so this runs only once.
+  }, []); // Runs only once on mount
 
   const signUp = async (email, password) => {
     try {
@@ -87,10 +75,8 @@ export const AuthProvider = ({ children }) => {
       });
 
       if (error) throw error;
-      console.log('✅ AuthContext: Sign up successful:', data?.user?.id);
       return { success: true, data };
     } catch (err) {
-      console.error('❌ AuthContext: Sign up error:', err);
       setError(err.message);
       return { success: false, error: err };
     }
@@ -105,10 +91,8 @@ export const AuthProvider = ({ children }) => {
       });
 
       if (error) throw error;
-      // The onAuthStateChanged listener will handle setting the user and navigation.
       return { success: true, data };
     } catch (err) {
-      console.error('🚨 AuthContext: Sign-in error:', err);
       setError(err.message);
       return { success: false, error: err };
     }
@@ -119,16 +103,13 @@ export const AuthProvider = ({ children }) => {
       setError(null);
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
-      // The onAuthStateChanged listener will handle clearing the user.
       return { success: true };
     } catch (err) {
-      console.error('❌ AuthContext: Sign out error:', err);
       setError(err.message);
       return { success: false, error: err.message };
     }
   };
 
-  // Function for App.jsx to call after it has navigated.
   const clearNavigationTarget = () => {
     setNavigateToScreen(null);
   };
