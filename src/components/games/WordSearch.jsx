@@ -16,7 +16,6 @@ const TOTAL_HIDDEN_NUMBERS = 6;
 const CELL_SIZE = 48;
 const CELL_GAP = 8;
 
-// FINAL FIX: Added onGameEnd to the component's props
 const WordSearch = ({ onNavigate, onGameEnd }) => {
   // Game states
   const [isPreGame, setIsPreGame] = useState(true);
@@ -40,6 +39,7 @@ const WordSearch = ({ onNavigate, onGameEnd }) => {
   const [mouseDownTime, setMouseDownTime] = useState(null);
   const [hasMouseMoved, setHasMouseMoved] = useState(false);
   const [mouseDownCell, setMouseDownCell] = useState(null);
+  const [generationAttempts, setGenerationAttempts] = useState(0);
   
   const timerRef = useRef(null);
   const gridRef = useRef(null);
@@ -82,8 +82,8 @@ const WordSearch = ({ onNavigate, onGameEnd }) => {
           .select('id, contact_name, phone_number_digits')
           .eq('user_id', user.id);
         if (fetchError) throw fetchError;
-        if (!data || data.length === 0) {
-          setError("No phone numbers available. Please add some numbers first.");
+        if (!data || data.length < 1) { // Need at least 1 number
+          setError("Please add at least one phone number to play Word Search.");
           setLoading(false);
           return;
         }
@@ -97,14 +97,14 @@ const WordSearch = ({ onNavigate, onGameEnd }) => {
     fetchPhoneNumbers();
 
     const handleGlobalMouseUp = () => {
-        if (isDragging) {
-            if (currentSelection.length === 10) {
-                setTimeout(() => handleSubmit(), 100);
-            }
+      if (isDragging) {
+        if (currentSelection.length === 10) {
+          setTimeout(() => handleSubmit(), 100);
         }
-        setIsDragging(false);
-        setMouseDownCell(null);
-        setHasMouseMoved(false);
+      }
+      setIsDragging(false);
+      setMouseDownCell(null);
+      setHasMouseMoved(false);
     };
 
     document.addEventListener('mouseup', handleGlobalMouseUp);
@@ -113,83 +113,157 @@ const WordSearch = ({ onNavigate, onGameEnd }) => {
       document.removeEventListener('mouseup', handleGlobalMouseUp);
     };
   }, [user]);
-  
-  const generateGrid = useCallback(() => {
-    // This is a complex function. For brevity, we assume it works as intended
-    // and returns a valid grid and hidden numbers.
-    // In a real scenario, this function would contain the logic from your provided code.
-    if (phoneNumbers.length === 0) {
-        setError("Cannot generate grid without phone numbers.");
-        return { error: "No phone numbers." };
+
+  const generateComplexPath = useCallback((startRow, startCol, digits, occupiedCells) => {
+    const path = [{ row: startRow, col: startCol }];
+    const visited = new Set([`${startRow}-${startCol}`]);
+
+    const findPath = (currentRow, currentCol, digitIndex) => {
+      if (digitIndex >= digits.length) return true;
+      const shuffledDirections = [...DIRECTIONS].sort(() => Math.random() - 0.5);
+      for (const direction of shuffledDirections) {
+        const newRow = currentRow + direction.dy;
+        const newCol = currentCol + direction.dx;
+        const cellKey = `${newRow}-${newCol}`;
+        if (newRow >= 0 && newRow < GRID_ROWS && newCol >= 0 && newCol < GRID_COLS && !occupiedCells.has(cellKey) && !visited.has(cellKey)) {
+          path.push({ row: newRow, col: newCol });
+          visited.add(cellKey);
+          if (findPath(newRow, newCol, digitIndex + 1)) return true;
+          path.pop();
+          visited.delete(cellKey);
+        }
+      }
+      return false;
+    };
+
+    if (findPath(startRow, startCol, 1)) {
+        let directionChanges = 0;
+        for (let i = 2; i < path.length; i++) {
+            const dir1 = { dx: path[i-1].col - path[i-2].col, dy: path[i-1].row - path[i-2].row };
+            const dir2 = { dx: path[i].col - path[i-1].col, dy: path[i].row - path[i-1].row };
+            if (dir1.dx !== dir2.dx || dir1.dy !== dir2.dy) directionChanges++;
+        }
+        if (directionChanges < 3) return null; // Ensure complexity
+        return path;
     }
-    const newGrid = Array(GRID_ROWS).fill().map(() => Array(GRID_COLS).fill(0).map(() => Math.floor(Math.random() * 10).toString()));
-    const hidden = phoneNumbers.slice(0, Math.min(phoneNumbers.length, TOTAL_HIDDEN_NUMBERS)).map(pn => ({
-        id: pn.id,
-        contactName: pn.contact_name,
-        digits: pn.phone_number_digits,
-        positions: [], // This would be populated by the placement algorithm
-        found: false,
-        exactPath: []
-    }));
-    // A real implementation would place numbers in the grid here.
-    return { grid: newGrid, hiddenNumbers: hidden };
-  }, [phoneNumbers]);
+    return null;
+  }, []);
+
+  const generateGrid = useCallback(() => {
+    const currentAttempt = generationAttempts + 1;
+    setGenerationAttempts(currentAttempt);
+    
+    if (phoneNumbers.length === 0) return { error: "No phone numbers available." };
+
+    const newGrid = Array(GRID_ROWS).fill().map(() => Array(GRID_COLS).fill(null));
+    const numbersWithPositions = [];
+    const occupiedCells = new Set();
+
+    const selectedNumbers = [];
+    let availablePhoneNumbers = [...phoneNumbers];
+    while (selectedNumbers.length < TOTAL_HIDDEN_NUMBERS) {
+      if (availablePhoneNumbers.length === 0) availablePhoneNumbers = [...phoneNumbers];
+      const randomIndex = Math.floor(Math.random() * availablePhoneNumbers.length);
+      selectedNumbers.push(availablePhoneNumbers.splice(randomIndex, 1)[0]);
+    }
+
+    for (const number of selectedNumbers) {
+      let placed = false;
+      for (let i = 0; i < 2000; i++) { // Placement attempts
+        const startRow = Math.floor(Math.random() * GRID_ROWS);
+        const startCol = Math.floor(Math.random() * GRID_COLS);
+        if (occupiedCells.has(`${startRow}-${startCol}`)) continue;
+
+        const path = generateComplexPath(startRow, startCol, number.phone_number_digits.split(''), occupiedCells);
+        if (path) {
+          path.forEach((pos, digitIndex) => {
+            newGrid[pos.row][pos.col] = number.phone_number_digits[digitIndex];
+            occupiedCells.add(`${pos.row}-${pos.col}`);
+          });
+          numbersWithPositions.push({
+            id: number.id,
+            contactName: number.contact_name,
+            digits: number.phone_number_digits,
+            positions: path.map(p => ({ x: p.col, y: p.row })),
+            found: false,
+            exactPath: path.map(p => ({ x: p.col, y: p.row }))
+          });
+          placed = true;
+          break;
+        }
+      }
+      if (!placed) {
+        if (currentAttempt < 50) return generateGrid(); // Retry grid generation
+        return { error: "Couldn't generate a solvable puzzle." };
+      }
+    }
+
+    if (numbersWithPositions.length !== TOTAL_HIDDEN_NUMBERS) {
+        if (currentAttempt < 50) return generateGrid();
+        return { error: "Couldn't place all numbers." };
+    }
+
+    for (let r = 0; r < GRID_ROWS; r++) {
+      for (let c = 0; c < GRID_COLS; c++) {
+        if (newGrid[r][c] === null) {
+          newGrid[r][c] = Math.floor(Math.random() * 10).toString();
+        }
+      }
+    }
+    
+    setGenerationAttempts(0);
+    return { grid: newGrid, hiddenNumbers: numbersWithPositions };
+  }, [phoneNumbers, generationAttempts, generateComplexPath]);
 
   const startGame = () => {
     setIsPreGame(false);
     setGameStarted(true);
     setIsGeneratingGrid(true);
-    
     setTimeout(() => {
-        const result = generateGrid();
-        if (result.error) {
-            setError(result.error);
-            setIsGeneratingGrid(false);
-            setGameStarted(false);
-            setIsPreGame(true);
-            return;
-        }
-        setGrid(result.grid);
-        setHiddenNumbers(result.hiddenNumbers);
+      const result = generateGrid();
+      if (result.error) {
+        setError(result.error);
         setIsGeneratingGrid(false);
-        const now = Date.now();
-        setStartTime(now);
-        timerRef.current = setInterval(() => {
-          setElapsedTime(Math.floor((Date.now() - now) / 1000));
-        }, 1000);
+        setGameStarted(false);
+        setIsPreGame(true);
+        return;
+      }
+      setGrid(result.grid);
+      setHiddenNumbers(result.hiddenNumbers);
+      setIsGeneratingGrid(false);
+      const now = Date.now();
+      setStartTime(now);
+      timerRef.current = setInterval(() => {
+        setElapsedTime(Math.floor((Date.now() - now) / 1000));
+      }, 1000);
     }, 50);
   };
 
-  const isAdjacent = (x1, y1, x2, y2) => {
-    return Math.abs(x1 - x2) <= 1 && Math.abs(y1 - y2) <= 1;
-  };
+  const isAdjacent = (x1, y1, x2, y2) => Math.abs(x1 - x2) <= 1 && Math.abs(y1 - y2) <= 1;
 
   const handleCellClick = (x, y) => {
     if (gameComplete || isCellFound(x, y) || isDragging) return;
-    
     const cellValue = grid[y][x];
     if (currentSelection.length === 0) {
-        setCurrentSelection([{ x, y, value: cellValue }]);
-        setShowSubmitButton(false);
-        return;
+      setCurrentSelection([{ x, y, value: cellValue }]);
+      setShowSubmitButton(false);
+      return;
     }
-    
     const existingIndex = currentSelection.findIndex(cell => cell.x === x && cell.y === y);
     if (existingIndex !== -1) {
-        const newSelection = currentSelection.slice(0, existingIndex + 1);
-        setCurrentSelection(newSelection);
-        setShowSubmitButton(newSelection.length === 10);
-        return;
+      const newSelection = currentSelection.slice(0, existingIndex + 1);
+      setCurrentSelection(newSelection);
+      setShowSubmitButton(newSelection.length === 10);
+      return;
     }
-    
     const lastCell = currentSelection[currentSelection.length - 1];
     if (isAdjacent(lastCell.x, lastCell.y, x, y)) {
-        const newSelection = [...currentSelection, { x, y, value: cellValue }];
-        setCurrentSelection(newSelection);
-        setShowSubmitButton(newSelection.length === 10);
+      const newSelection = [...currentSelection, { x, y, value: cellValue }];
+      setCurrentSelection(newSelection);
+      setShowSubmitButton(newSelection.length === 10);
     } else {
-        setCurrentSelection([{ x, y, value: cellValue }]);
-        setShowSubmitButton(false);
+      setCurrentSelection([{ x, y, value: cellValue }]);
+      setShowSubmitButton(false);
     }
   };
 
@@ -215,7 +289,6 @@ const WordSearch = ({ onNavigate, onGameEnd }) => {
 
   const handleCellDrag = (x, y) => {
     if (gameComplete || isCellFound(x, y) || !isDragging || currentSelection.length === 0) return;
-    
     const lastCell = currentSelection[currentSelection.length - 1];
     if (isAdjacent(lastCell.x, lastCell.y, x, y)) {
       const alreadySelected = currentSelection.some(cell => cell.x === x && cell.y === y);
@@ -223,27 +296,16 @@ const WordSearch = ({ onNavigate, onGameEnd }) => {
         const cellValue = grid[y][x];
         const newSelection = [...currentSelection, { x, y, value: cellValue }];
         setCurrentSelection(newSelection);
-        if (newSelection.length === 10) {
-          setShowSubmitButton(true);
-        }
+        if (newSelection.length === 10) setShowSubmitButton(true);
       }
     }
-  };
-  
-  const isExactPathMatch = (userSelection, hiddenNumber) => {
-    // This function needs the real path from generation to work correctly
-    return userSelection.map(c => c.value).join('') === hiddenNumber.digits;
   };
 
   const handleSubmit = () => {
     if (currentSelection.length !== 10) return;
-    
     const selectedDigits = currentSelection.map(cell => cell.value).join('');
     const matchedNumberIndex = hiddenNumbers.findIndex(num => num.digits === selectedDigits && !num.found);
-    
     if (matchedNumberIndex !== -1) {
-      const matchedNumber = hiddenNumbers[matchedNumberIndex];
-      // In a real scenario, you'd check the exact path here
       playSound('correct');
       const newHiddenNumbers = [...hiddenNumbers];
       newHiddenNumbers[matchedNumberIndex].found = true;
@@ -251,10 +313,7 @@ const WordSearch = ({ onNavigate, onGameEnd }) => {
       setFoundNumbers([...foundNumbers, { ...newHiddenNumbers[matchedNumberIndex], positions: [...currentSelection] }]);
       setCurrentSelection([]);
       setShowSubmitButton(false);
-      
-      if (newHiddenNumbers.every(num => num.found)) {
-        handleGameComplete();
-      }
+      if (newHiddenNumbers.every(num => num.found)) handleGameComplete();
     } else {
       playSound('incorrect');
       if (gridRef.current) {
@@ -268,25 +327,18 @@ const WordSearch = ({ onNavigate, onGameEnd }) => {
 
   const handleGameComplete = () => {
     if (timerRef.current) clearInterval(timerRef.current);
-    
     const finalTime = Math.floor((Date.now() - startTime) / 1000);
     setElapsedTime(finalTime);
     setGameComplete(true);
     setShowConfetti(true);
     playSound('win');
-    
     const earnedStars = calculateStars(finalTime);
     setStars(earnedStars);
-    
     hiddenNumbers.forEach(number => {
       saveGameResult(number.id, 'word-search', earnedStars, { time_taken: finalTime });
     });
-
-    // Call onGameEnd to update usage
     if (onGameEnd) {
-        setTimeout(() => {
-            onGameEnd(earnedStars, { time_taken: finalTime });
-        }, 2000);
+      setTimeout(() => onGameEnd(earnedStars, { time_taken: finalTime }), 2000);
     }
   };
 
@@ -295,13 +347,8 @@ const WordSearch = ({ onNavigate, onGameEnd }) => {
   const getFoundNumberIndex = (x, y) => foundNumbers.findIndex(number => number.positions.some(pos => pos.x === x && pos.y === y));
   const getSelectionIndex = (x, y) => currentSelection.findIndex(cell => cell.x === x && cell.y === y);
 
-  if (loading) {
-    return <div className="min-h-screen flex items-center justify-center p-6 app-container"><div className="text-center relative z-10"><div className="w-16 h-16 border-4 border-indigo-200 border-t-indigo-500 rounded-full animate-spin mb-4 mx-auto"></div><h2 className="text-2xl font-bold text-indigo-800 mb-2">Preparing Challenge</h2><p className="text-indigo-600">Loading your phone numbers...</p></div></div>;
-  }
-
-  if (error) {
-    return <div className="min-h-screen flex items-center justify-center p-6 app-container"><div className="text-center bg-white p-8 rounded-3xl shadow-xl relative z-10"><div className="text-6xl mb-4">😕</div><h2 className="text-2xl font-bold text-indigo-800 mb-4">{error}</h2><div className="flex gap-4 justify-center"><motion.button onClick={() => onNavigate('add-number')} className="bg-indigo-600 text-white px-6 py-3 rounded-xl hover:bg-indigo-700">Add Numbers</motion.button><motion.button onClick={() => onNavigate('dashboard')} className="bg-gray-200 text-indigo-700 px-6 py-3 rounded-xl hover:bg-gray-300">Back to Dashboard</motion.button></div></div></div>;
-  }
+  if (loading) return <div className="min-h-screen flex items-center justify-center p-6 app-container"><div className="text-center relative z-10"><div className="w-16 h-16 border-4 border-indigo-200 border-t-indigo-500 rounded-full animate-spin mb-4 mx-auto"></div><h2 className="text-2xl font-bold text-indigo-800 mb-2">Preparing Challenge</h2><p className="text-indigo-600">Loading your phone numbers...</p></div></div>;
+  if (error) return <div className="min-h-screen flex items-center justify-center p-6 app-container"><div className="text-center bg-white p-8 rounded-3xl shadow-xl relative z-10"><div className="text-6xl mb-4">😕</div><h2 className="text-2xl font-bold text-indigo-800 mb-4">{error}</h2><div className="flex gap-4 justify-center"><motion.button onClick={() => onNavigate('add-number')} className="bg-indigo-600 text-white px-6 py-3 rounded-xl hover:bg-indigo-700">Add Numbers</motion.button><motion.button onClick={() => onNavigate('dashboard')} className="bg-gray-200 text-indigo-700 px-6 py-3 rounded-xl hover:bg-gray-300">Back to Dashboard</motion.button></div></div></div>;
 
   return (
     <div className="min-h-screen app-container">
@@ -312,7 +359,6 @@ const WordSearch = ({ onNavigate, onGameEnd }) => {
             <div className="text-center"><h2 className="text-2xl font-bold text-indigo-800">Word Search</h2><p className="text-indigo-600">Find hidden phone numbers!</p></div>
             <div className="flex items-center gap-2 bg-gradient-to-r from-purple-500 to-indigo-600 px-4 py-2 rounded-xl shadow-md text-white"><SafeIcon icon={FiClock} className="text-white" /><span className="font-bold">{formatTime(elapsedTime)}</span></div>
         </motion.div>
-
         {isPreGame && (
           <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="bg-white bg-opacity-90 backdrop-filter backdrop-blur-sm p-8 rounded-3xl shadow-xl text-center">
             <div className="w-20 h-20 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg"><SafeIcon icon={FiPlay} size={36} className="text-white" /></div>
@@ -321,11 +367,7 @@ const WordSearch = ({ onNavigate, onGameEnd }) => {
             <motion.button onClick={startGame} className="bg-gradient-to-br from-indigo-500 to-purple-600 text-white px-8 py-4 rounded-2xl font-semibold shadow-lg hover:shadow-xl">Start Challenge</motion.button>
           </motion.div>
         )}
-
-        {isGeneratingGrid && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50"><div className="text-white text-2xl">Generating your puzzle...</div></div>
-        )}
-
+        {isGeneratingGrid && (<div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50"><div className="text-white text-2xl">Generating your puzzle...</div></div>)}
         {gameStarted && !isPreGame && !isGeneratingGrid && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col items-center">
             <motion.div ref={gridRef} className="bg-white p-6 rounded-3xl shadow-lg mb-6 select-none">
@@ -349,30 +391,19 @@ const WordSearch = ({ onNavigate, onGameEnd }) => {
                 }))}
               </div>
             </motion.div>
-            
             <AnimatePresence>
-              {showSubmitButton && !gameComplete && (
-                <motion.button initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }} onClick={handleSubmit} className="bg-gradient-to-br from-indigo-500 to-purple-600 text-white px-8 py-4 rounded-2xl font-semibold shadow-lg">Check Number</motion.button>
-              )}
+              {showSubmitButton && !gameComplete && (<motion.button initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }} onClick={handleSubmit} className="bg-gradient-to-br from-indigo-500 to-purple-600 text-white px-8 py-4 rounded-2xl font-semibold shadow-lg">Check Number</motion.button>)}
             </AnimatePresence>
-
             {foundNumbers.length > 0 && (
               <div className="w-full bg-white p-6 rounded-3xl shadow-lg mt-4">
                 <h3 className="text-lg font-bold text-indigo-800 mb-3">Found:</h3>
                 <div className="space-y-2">
-                  {foundNumbers.map((number, index) => (
-                    <div key={index} className="flex items-center gap-2">
-                      <div className={`w-4 h-4 rounded-full ${['bg-green-400', 'bg-blue-400', 'bg-purple-400', 'bg-yellow-400', 'bg-pink-400', 'bg-orange-400'][index % 6]}`}></div>
-                      <span className="text-gray-800 font-mono">{number.digits.replace(/(\d{3})(\d{3})(\d{4})/, '($1) $2-$3')}</span>
-                      <span className="text-indigo-600">- {number.contactName}</span>
-                    </div>
-                  ))}
+                  {foundNumbers.map((number, index) => (<div key={index} className="flex items-center gap-2"><div className={`w-4 h-4 rounded-full ${['bg-green-400', 'bg-blue-400', 'bg-purple-400', 'bg-yellow-400', 'bg-pink-400', 'bg-orange-400'][index % 6]}`}></div><span className="text-gray-800 font-mono">{number.digits.replace(/(\d{3})(\d{3})(\d{4})/, '($1) $2-$3')}</span><span className="text-indigo-600">- {number.contactName}</span></div>))}
                 </div>
               </div>
             )}
           </motion.div>
         )}
-
         <AnimatePresence>
           {gameComplete && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 backdrop-filter backdrop-blur-sm">
@@ -380,20 +411,9 @@ const WordSearch = ({ onNavigate, onGameEnd }) => {
                 <div className="text-7xl mb-4">🎉</div>
                 <h2 className="text-3xl font-bold text-indigo-800 mb-2">Challenge Complete!</h2>
                 <p className="text-indigo-600 mb-6">You found all {TOTAL_HIDDEN_NUMBERS} hidden numbers!</p>
-                <div className="bg-indigo-50 p-4 rounded-2xl mb-6">
-                  <p className="text-sm text-indigo-600 mb-1">Your time:</p>
-                  <p className="text-3xl font-mono font-bold text-indigo-800">{formatTime(elapsedTime)}</p>
-                </div>
-                <div className="mb-6">
-                  <div className="flex justify-center gap-1">
-                    {[...Array(5)].map((_, i) => (<SafeIcon key={i} icon={FiStar} className={`w-8 h-8 ${i < stars ? 'text-yellow-500 fill-current' : 'text-gray-300'}`} />))}
-                  </div>
-                  <p className="text-sm text-gray-600 mt-2">{stars} out of 5 stars</p>
-                </div>
-                <div className="flex gap-3">
-                  <motion.button onClick={() => onNavigate('dashboard')} className="flex-1 bg-gray-100 text-indigo-700 py-3 rounded-2xl font-semibold hover:bg-gray-200">Play Again</motion.button>
-                  <motion.button onClick={() => onNavigate('dashboard')} className="flex-1 bg-gradient-to-br from-indigo-500 to-purple-600 text-white py-3 rounded-2xl font-semibold hover:shadow-lg">Done</motion.button>
-                </div>
+                <div className="bg-indigo-50 p-4 rounded-2xl mb-6"><p className="text-sm text-indigo-600 mb-1">Your time:</p><p className="text-3xl font-mono font-bold text-indigo-800">{formatTime(elapsedTime)}</p></div>
+                <div className="mb-6"><div className="flex justify-center gap-1">{[...Array(5)].map((_, i) => (<SafeIcon key={i} icon={FiStar} className={`w-8 h-8 ${i < stars ? 'text-yellow-500 fill-current' : 'text-gray-300'}`} />))}</div><p className="text-sm text-gray-600 mt-2">{stars} out of 5 stars</p></div>
+                <div className="flex gap-3"><motion.button onClick={() => onNavigate('dashboard')} className="flex-1 bg-gray-100 text-indigo-700 py-3 rounded-2xl font-semibold hover:bg-gray-200">Play Again</motion.button><motion.button onClick={() => onNavigate('dashboard')} className="flex-1 bg-gradient-to-br from-indigo-500 to-purple-600 text-white py-3 rounded-2xl font-semibold hover:shadow-lg">Done</motion.button></div>
               </motion.div>
             </motion.div>
           )}
