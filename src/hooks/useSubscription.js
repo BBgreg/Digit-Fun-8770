@@ -10,13 +10,15 @@ export const useSubscription = () => {
   const { user } = useAuth();
 
   const fetchUserData = useCallback(async () => {
+    // This function now starts by setting loading to true, which is correct.
+    setLoading(true); 
     try {
-      setLoading(true);
       setError(null);
 
       if (!user) {
         setSubscription(null);
         setUserProfile(null);
+        setLoading(false); // Ensure loading is false if there's no user
         return;
       }
 
@@ -87,6 +89,9 @@ export const useSubscription = () => {
   useEffect(() => {
     if (user) {
       fetchUserData();
+    } else {
+      // If there's no user, we are not loading.
+      setLoading(false);
     }
   }, [user, fetchUserData]);
 
@@ -166,12 +171,21 @@ export const useSubscription = () => {
   }, [subscription, getRemainingUsesForGameMode]);
 
   const getUsageSummary = useCallback(() => {
-    if (!subscription) return {};
+    // FINAL FIX: Return an empty object if subscription is not yet loaded.
+    // This prevents the "Cannot read properties of undefined" error.
+    if (!subscription) return {
+        'sequence-riddle': { used: 0, remaining: 0 },
+        'speed-5': { used: 0, remaining: 0 },
+        'word-search': { used: 0, remaining: 0 },
+        'odd-one-out': { used: 0, remaining: 0 },
+    };
+    
     const gameModes = ['sequence-riddle', 'speed-5', 'word-search', 'odd-one-out'];
     const summary = {};
     gameModes.forEach(mode => {
+      const columnName = `${mode}_uses`;
       summary[mode] = {
-        used: subscription[mode + '_uses'] || 0,
+        used: subscription[columnName] || 0,
         remaining: getRemainingUsesForGameMode(mode)
       };
     });
@@ -186,8 +200,8 @@ export const useSubscription = () => {
     canPlayGameMode,
     getRemainingUsesForGameMode,
     incrementGameModeUsage,
-    getTotalRemainingUses, // Restored for SubscriptionStatus
-    getUsageSummary,      // Restored for SubscriptionStatus
+    getTotalRemainingUses,
+    getUsageSummary,
     refetch: fetchUserData
   };
 };
