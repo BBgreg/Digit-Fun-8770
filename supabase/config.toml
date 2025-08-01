@@ -1,0 +1,22 @@
+# supabase/config.toml
+
+[project]
+id = "digit-fun"
+organization_id = "tgh-boyz-org"
+
+[api]
+port = 54321
+schemas = ["public", "storage"]
+extra_schemas = ["auth"]
+max_rows = 1000
+
+[db]
+port = 54322
+major_version = 15
+
+[studio]
+port = 54323
+
+[functions]
+[functions."create-checkout-session"]
+[functions."stripe-webhook"]
