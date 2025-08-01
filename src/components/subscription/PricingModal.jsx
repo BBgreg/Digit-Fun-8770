@@ -12,49 +12,36 @@ const PricingModal = ({ isOpen, onClose, onSubscribe, subscription }) => {
   const pricingPlan = {
     name: "Unlimited",
     amount: 2.99,
-    priceId: "price_1Rp0nHIa1WstuQNe3aRfnIj1",
-    paymentLink: "https://buy.stripe.com/4gMcN5cJ46hqdmS0q01RC01",
     currency: "usd",
     interval: "month"
   };
 
+  // FINAL FIX: This function now calls the onSubscribe prop from the Dashboard
+  // instead of using its own logic. This connects it to our Supabase function.
   const handleSubscribe = async () => {
     try {
       setIsLoading(true);
       setError('');
-      console.log('Opening Stripe payment link...');
+      console.log('🚀 PricingModal: Calling onSubscribe to create checkout session...');
       
-      // Open Stripe payment link in new tab
-      window.open(pricingPlan.paymentLink, '_blank');
-      
-      // Close modal after opening payment link
-      setTimeout(() => {
-        onClose();
-      }, 1000);
+      // This is the crucial change: call the function passed in from the Dashboard
+      if (onSubscribe) {
+        await onSubscribe();
+      }
+
     } catch (err) {
-      console.error('Payment error:', err);
-      setError('Failed to open payment page. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
+      console.error('❌ Payment error:', err);
+      setError('Failed to create payment session. Please try again.');
+      setIsLoading(false); // Ensure loading is turned off on error
+    } 
+    // We don't set isLoading to false in the finally block because a successful
+    // call will redirect the user away from this page.
   };
 
   const features = [
-    {
-      icon: FiZap,
-      title: 'Unlimited Games',
-      description: 'Play all game modes without restrictions'
-    },
-    {
-      icon: FiStar,
-      title: 'All Features',
-      description: 'Access to current and future features'
-    },
-    {
-      icon: FiShield,
-      title: 'Secure & Private',
-      description: 'Your data is always safe and private'
-    }
+    { icon: FiZap, title: 'Unlimited Games', description: 'Play all game modes without restrictions' },
+    { icon: FiStar, title: 'All Features', description: 'Access to current and future features' },
+    { icon: FiShield, title: 'Secure & Private', description: 'Your data is always safe and private' }
   ];
 
   if (!isOpen) return null;
@@ -75,7 +62,6 @@ const PricingModal = ({ isOpen, onClose, onSubscribe, subscription }) => {
           className="bg-white rounded-3xl shadow-2xl max-w-md w-full overflow-hidden"
           onClick={(e) => e.stopPropagation()}
         >
-          {/* Header */}
           <div className="bg-gradient-to-br from-purple-500 via-indigo-500 to-blue-500 p-8 text-white text-center relative">
             <button
               onClick={onClose}
@@ -83,7 +69,6 @@ const PricingModal = ({ isOpen, onClose, onSubscribe, subscription }) => {
             >
               <SafeIcon icon={FiX} size={20} className="text-white" />
             </button>
-            
             <motion.div
               className="w-16 h-16 bg-white bg-opacity-20 rounded-2xl flex items-center justify-center mx-auto mb-4"
               animate={{ rotate: [0, 10, -10, 0] }}
@@ -91,16 +76,11 @@ const PricingModal = ({ isOpen, onClose, onSubscribe, subscription }) => {
             >
               <SafeIcon icon={FiStar} size={32} className="text-white" />
             </motion.div>
-            
             <h2 className="text-3xl font-bold mb-2">Unlock Unlimited Fun!</h2>
-            <p className="text-white text-opacity-90">
-              Get unlimited access to all games
-            </p>
+            <p className="text-white text-opacity-90">Get unlimited access to all games</p>
           </div>
 
-          {/* Content */}
           <div className="p-8">
-            {/* Pricing */}
             <div className="text-center mb-8">
               <div className="bg-gradient-to-r from-purple-50 to-indigo-50 rounded-2xl p-6 mb-6">
                 <div className="text-4xl font-bold text-indigo-800 mb-1">
@@ -109,13 +89,11 @@ const PricingModal = ({ isOpen, onClose, onSubscribe, subscription }) => {
                 </div>
                 <p className="text-indigo-600 text-sm">Recurring monthly subscription</p>
               </div>
-              
               <p className="text-gray-600 mb-6">
                 Continue your phone number memorization journey with unlimited access to all games!
               </p>
             </div>
 
-            {/* Features */}
             <div className="space-y-4 mb-8">
               {features.map((feature, index) => (
                 <motion.div
@@ -136,7 +114,6 @@ const PricingModal = ({ isOpen, onClose, onSubscribe, subscription }) => {
               ))}
             </div>
 
-            {/* Error Message */}
             {error && (
               <motion.div
                 initial={{ opacity: 0, y: -10 }}
@@ -150,7 +127,6 @@ const PricingModal = ({ isOpen, onClose, onSubscribe, subscription }) => {
               </motion.div>
             )}
 
-            {/* Subscribe Button */}
             <motion.button
               onClick={handleSubscribe}
               disabled={isLoading}
@@ -171,7 +147,6 @@ const PricingModal = ({ isOpen, onClose, onSubscribe, subscription }) => {
               )}
             </motion.button>
 
-            {/* Security Note */}
             <div className="mt-6 text-center">
               <div className="flex items-center justify-center gap-2 text-gray-500 text-sm">
                 <SafeIcon icon={FiShield} size={14} />
