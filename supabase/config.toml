@@ -1,8 +1,9 @@
 # supabase/config.toml
 
-[project]
-id = "digit-fun"
-organization_id = "tgh-boyz-org"
+# The project_id should be your project's reference ID from the Supabase dashboard URL.
+# It looks like: abcdefghijklmnopqrst
+# The organization_id is not needed here.
+project_id = "your-project-ref-id"
 
 [api]
 port = 54321
@@ -17,6 +18,7 @@ major_version = 15
 [studio]
 port = 54323
 
+# Defines the Edge Functions in your project
 [functions]
-[functions."create-checkout-session"]
-[functions."stripe-webhook"]
+create-checkout-session = {}
+stripe-webhook = {}
