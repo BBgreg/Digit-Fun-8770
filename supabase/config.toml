@@ -2,13 +2,12 @@
 
 # The project_id should be your project's reference ID from the Supabase dashboard URL.
 # It looks like: abcdefghijklmnopqrst
-# The organization_id is not needed here.
 project_id = "your-project-ref-id"
 
 [api]
 port = 54321
-schemas = ["public", "storage"]
-extra_schemas = ["auth"]
+# All schemas, including 'auth', should be listed in the 'schemas' key.
+schemas = ["public", "storage", "auth"]
 max_rows = 1000
 
 [db]
