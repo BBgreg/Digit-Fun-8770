@@ -1,8 +1,24 @@
 [⚠️ Suspicious Content] import React, { useState, useEffect } from 'react';
-import { supabase } from '../supabaseClient';
 import { useNavigate } from 'react-router-dom';
-import GameCard from '../components/GameCard';
-import { useSubscription } from '../context/SubscriptionContext';
+
+// Corrected import paths based on your file structure
+import { supabase } from '../../lib/supabase';
+import { useSubscription } from '../../hooks/useSubscription';
+
+// Placeholder GameCard component since it was not in your file list.
+// Please replace this with your actual GameCard component and import.
+const GameCard = ({ title, description, linkTo, unlocked }) => (
+    <div className={`bg-white shadow-md rounded-lg p-4 ${!unlocked ? 'opacity-50' : ''}`}>
+        <h3 className="text-lg font-bold">{title}</h3>
+        <p className="text-gray-600 mb-4">{description}</p>
+        {unlocked ? (
+            <a href={linkTo} className="text-blue-500 hover:text-blue-700">Play Now</a>
+        ) : (
+            <p className="text-red-500 font-semibold">Locked</p>
+        )}
+    </div>
+);
+
 
 const Dashboard = () => {
     const [user, setUser] = useState(null);
@@ -25,18 +41,10 @@ const Dashboard = () => {
     const handleUpgrade = async () => {
         setLoading(true);
         try {
-            // --- THIS IS THE CRITICAL PART ---
-            // We need to get the current session to access the auth token
             const { data: { session }, error: sessionError } = await supabase.auth.getSession();
 
-            if (sessionError) {
-                throw sessionError;
-            }
-
-            if (!session) {
-                throw new Error("User is not authenticated.");
-            }
-            // --- END OF CRITICAL PART ---
+            if (sessionError) throw sessionError;
+            if (!session) throw new Error("User is not authenticated.");
 
             const response = await fetch(
                 `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-checkout-session`,
@@ -44,7 +52,6 @@ const Dashboard = () => {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        // We must include the Authorization header with the user's access token
                         'Authorization': `Bearer ${session.access_token}`,
                         'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
                     },
@@ -54,18 +61,12 @@ const Dashboard = () => {
             const data = await response.json();
 
             if (response.ok) {
-                // Redirect to Stripe Checkout
                 window.location.href = data.url;
             } else {
-                // Log the error from the function if something went wrong
                 console.error('Error creating checkout session:', data.error);
-                // Using console.error instead of alert to prevent build failures
-                console.error(`Error: ${data.error || 'Could not connect to payment provider.'}`);
             }
         } catch (error) {
             console.error('An unexpected error occurred:', error);
-            // Using console.error instead of alert to prevent build failures
-            console.error(`An unexpected error occurred: ${error.message}`);
         } finally {
             setLoading(false);
         }
@@ -76,7 +77,6 @@ const Dashboard = () => {
     }
 
     const isPremium = subscriptionStatus === 'active';
-    const canPlay = isPremium || (plays.digit_span < 2 && plays.verbal_memory < 2);
 
     return (
         <div className="min-h-screen bg-gray-100 p-4 sm:p-6 md:p-8">
@@ -120,12 +120,11 @@ const Dashboard = () => {
                         linkTo="/verbal-memory"
                         unlocked={isPremium || plays.verbal_memory < 2}
                     />
-                    {/* Add other games here, locking them if the user is not premium */}
                      <GameCard
                         title="Coming Soon"
                         description="More games are on the way!"
                         linkTo="#"
-                        unlocked={false} // Always locked for now
+                        unlocked={false}
                     />
                 </div>
             </div>
