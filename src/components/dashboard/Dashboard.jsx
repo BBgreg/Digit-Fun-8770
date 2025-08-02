@@ -1,7 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-
-// Corrected import paths based on your file structure
 import { supabase } from '../../lib/supabase';
 import { useSubscription } from '../../hooks/useSubscription';
 
@@ -112,13 +110,13 @@ const Dashboard = () => {
                         title="Digit Span"
                         description="Test your short-term memory by recalling sequences of numbers."
                         linkTo="/digit-span"
-                        unlocked={isPremium || plays.digit_span < 2}
+                        unlocked={isPremium || (plays && plays.digit_span < 2)}
                     />
                     <GameCard
                         title="Verbal Memory"
                         description="See how many words you can remember from a progressively longer list."
                         linkTo="/verbal-memory"
-                        unlocked={isPremium || plays.verbal_memory < 2}
+                        unlocked={isPremium || (plays && plays.verbal_memory < 2)}
                     />
                      <GameCard
                         title="Coming Soon"
