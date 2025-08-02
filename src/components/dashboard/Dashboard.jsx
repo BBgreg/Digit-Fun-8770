@@ -1,6 +1,4 @@
-[⚠️ Suspicious Content] // src/pages/Dashboard.jsx
-
-import React, { useState, useEffect } from 'react';
+[⚠️ Suspicious Content] import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import { useNavigate } from 'react-router-dom';
 import GameCard from '../components/GameCard';
