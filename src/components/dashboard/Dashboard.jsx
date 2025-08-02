@@ -1,4 +1,4 @@
-[⚠️ Suspicious Content] import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 // Corrected import paths based on your file structure
