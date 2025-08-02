@@ -61,11 +61,13 @@ const Dashboard = () => {
             } else {
                 // Log the error from the function if something went wrong
                 console.error('Error creating checkout session:', data.error);
-                alert(`Error: ${data.error || 'Could not connect to payment provider.'}`);
+                // Using console.error instead of alert to prevent build failures
+                console.error(`Error: ${data.error || 'Could not connect to payment provider.'}`);
             }
         } catch (error) {
             console.error('An unexpected error occurred:', error);
-            alert(`An unexpected error occurred: ${error.message}`);
+            // Using console.error instead of alert to prevent build failures
+            console.error(`An unexpected error occurred: ${error.message}`);
         } finally {
             setLoading(false);
         }
