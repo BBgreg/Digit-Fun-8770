@@ -1,111 +1,97 @@
-// supabase/functions/create-checkout-session/index.ts
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import Stripe from 'https://esm.sh/stripe@12.0.0?target=deno'
 
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.0.0'
-import Stripe from 'https://esm.sh/stripe@10.12.0?target=deno'
+const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') ?? '', {
+  apiVersion: '2022-11-15',
+})
 
-console.log("Function starting up...");
-
-// --- Check for Secrets ---
-// This is the most likely point of failure. We log to see if the secrets are loaded.
-const STRIPE_SECRET_KEY = Deno.env.get('STRIPE_SECRET_KEY');
-const SITE_URL = Deno.env.get('SITE_URL');
-const STRIPE_PRICE_ID = Deno.env.get('STRIPE_PRICE_ID');
-
-console.log(`SITE_URL loaded: ${!!SITE_URL}`);
-console.log(`STRIPE_PRICE_ID loaded: ${!!STRIPE_PRICE_ID}`);
-console.log(`STRIPE_SECRET_KEY loaded: ${!!STRIPE_SECRET_KEY}`); // This is the most critical one
-
-if (!STRIPE_SECRET_KEY || !SITE_URL || !STRIPE_PRICE_ID) {
-  console.error("CRITICAL ERROR: One or more environment variables are missing.");
-  // We don't serve the function if secrets are missing.
-  // This will cause a 500 error, but the log above will tell us why.
-}
-
-// --- Initialize Stripe ---
-// This will fail if the secret key is invalid.
-let stripe;
-try {
-  stripe = new Stripe(STRIPE_SECRET_KEY, {
-    apiVersion: '2022-11-15',
-    httpClient: Stripe.createFetchHttpClient(),
-  });
-  console.log("Stripe client initialized successfully.");
-} catch (e) {
-  console.error("CRITICAL ERROR: Failed to initialize Stripe client.", e.message);
-}
-
+const supabaseUrl = Deno.env.get('SUPABASE_URL')!
+const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
 serve(async (req) => {
-  console.log("Request received. Method:", req.method);
-
-  // --- Handle CORS Preflight ---
-  if (req.method === 'OPTIONS') {
-    console.log("Handling OPTIONS preflight request.");
-    return new Response('ok', {
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-      },
-    })
-  }
-
   try {
-    // --- Authenticate User ---
-    console.log("Attempting to authenticate user...");
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      { global: { headers: { Authorization: req.headers.get('Authorization')! } } }
-    )
-    const { data: { user }, error: userError } = await supabaseClient.auth.getUser()
-
-    if (userError) {
-      console.error("User authentication error:", userError);
-      throw userError;
+    // Handle CORS
+    if (req.method === 'OPTIONS') {
+      return new Response('ok', {
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'POST',
+          'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+        }
+      })
     }
-    if (!user) {
-        console.error("No user found for the provided token.");
-        throw new Error("User not found.");
-    }
-    console.log("User authenticated successfully:", user.email);
 
+    const { userId, userEmail, priceId, successUrl, cancelUrl } = await req.json()
 
-    // --- Create Stripe Checkout Session ---
-    console.log("Creating Stripe checkout session...");
-    const session = await stripe.checkout.sessions.create({
-      payment_method_types: ['card'],
-      line_items: [{ price: STRIPE_PRICE_ID, quantity: 1 }],
-      mode: 'subscription',
-      success_url: `${SITE_URL}/dashboard?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${SITE_URL}/dashboard`,
-      customer_email: user.email,
-      subscription_data: {
+    console.log('Creating checkout session for:', { userId, userEmail, priceId })
+
+    // Get or create Stripe customer
+    let customer
+    const { data: subscription } = await supabase
+      .from('user_subscriptions')
+      .select('stripe_customer_id')
+      .eq('user_id', userId)
+      .single()
+
+    if (subscription?.stripe_customer_id) {
+      customer = await stripe.customers.retrieve(subscription.stripe_customer_id)
+    } else {
+      customer = await stripe.customers.create({
+        email: userEmail,
         metadata: {
-          user_id: user.id,
+          supabase_user_id: userId,
         },
-      },
-    })
-    console.log("Stripe session created successfully. ID:", session.id);
+      })
 
-    // --- Return Session URL ---
-    return new Response(JSON.stringify({ url: session.url }), {
-      headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+      // Update user_subscriptions with customer ID
+      await supabase
+        .from('user_subscriptions')
+        .upsert({
+          user_id: userId,
+          stripe_customer_id: customer.id,
+        })
+    }
+
+    // Create checkout session
+    const session = await stripe.checkout.sessions.create({
+      customer: customer.id,
+      line_items: [
+        {
+          price: priceId,
+          quantity: 1,
+        },
+      ],
+      mode: 'subscription',
+      success_url: successUrl,
+      cancel_url: cancelUrl,
+      metadata: {
+        supabase_user_id: userId,
       },
     })
+
+    return new Response(
+      JSON.stringify({ sessionId: session.id }),
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*',
+        },
+        status: 200,
+      }
+    )
   } catch (error) {
-    console.error("--- ERROR IN REQUEST HANDLER ---");
-    console.error(error);
-    return new Response(JSON.stringify({ error: error.message }), {
-      status: 500,
-      headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-      },
-    })
+    console.error('Error creating checkout session:', error)
+    return new Response(
+      JSON.stringify({ error: error.message }),
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*',
+        },
+        status: 400,
+      }
+    )
   }
 })

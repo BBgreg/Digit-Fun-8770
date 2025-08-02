@@ -409,3 +409,5 @@ const Dashboard = ({ onNavigate }) => {
     </div>
   );
 };
+
+export default Dashboard;

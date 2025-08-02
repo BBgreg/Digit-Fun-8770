@@ -54,17 +54,9 @@ ALTER TABLE app_users_profile ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_subscriptions ENABLE ROW LEVEL SECURITY;
 
 -- RLS Policies
--- FIX: Added DROP POLICY IF EXISTS to make the script re-runnable
-DROP POLICY IF EXISTS "Users can manage their own phone numbers" ON user_phone_numbers;
 CREATE POLICY "Users can manage their own phone numbers" ON user_phone_numbers FOR ALL USING (auth.uid() = user_id);
-
-DROP POLICY IF EXISTS "Users can manage their own game results" ON game_results;
 CREATE POLICY "Users can manage their own game results" ON game_results FOR ALL USING (auth.uid() = user_id);
-
-DROP POLICY IF EXISTS "Users can manage their own profiles" ON app_users_profile;
 CREATE POLICY "Users can manage their own profiles" ON app_users_profile FOR ALL USING (auth.uid() = user_id);
-
-DROP POLICY IF EXISTS "Users can manage their own subscriptions" ON user_subscriptions;
 CREATE POLICY "Users can manage their own subscriptions" ON user_subscriptions FOR ALL USING (auth.uid() = user_id);
 
 
@@ -83,13 +75,8 @@ END;
 $$ language 'plpgsql';
 
 -- Apply Updated At Trigger to tables
-DROP TRIGGER IF EXISTS update_user_phone_numbers_updated_at ON user_phone_numbers;
 CREATE TRIGGER update_user_phone_numbers_updated_at BEFORE UPDATE ON user_phone_numbers FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-DROP TRIGGER IF EXISTS update_app_users_profile_updated_at ON app_users_profile;
 CREATE TRIGGER update_app_users_profile_updated_at BEFORE UPDATE ON app_users_profile FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-DROP TRIGGER IF EXISTS update_user_subscriptions_updated_at ON user_subscriptions;
 CREATE TRIGGER update_user_subscriptions_updated_at BEFORE UPDATE ON user_subscriptions FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 
@@ -111,7 +98,6 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- This trigger calls the function whenever a new user is added to the auth.users table.
-DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
