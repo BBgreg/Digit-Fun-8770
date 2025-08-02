@@ -5,8 +5,8 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { useSubscription } from '../../hooks/useSubscription';
 
-// Placeholder GameCard component since it was not in your file list.
-// Please replace this with your actual GameCard component and import.
+// Placeholder GameCard component since GameCard.jsx was not found in your file list.
+// If you have this component, please replace this placeholder with the correct import.
 const GameCard = ({ title, description, linkTo, unlocked }) => (
     <div className={`bg-white shadow-md rounded-lg p-4 ${!unlocked ? 'opacity-50' : ''}`}>
         <h3 className="text-lg font-bold">{title}</h3>
