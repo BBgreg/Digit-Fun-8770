@@ -1,4 +1,4 @@
-// src/pages/Dashboard.jsx
+[⚠️ Suspicious Content] // src/pages/Dashboard.jsx
 
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
