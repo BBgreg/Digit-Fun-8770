@@ -10,10 +10,10 @@ const PricingModal = ({ isOpen, onClose, onSubscribe, subscription }) => {
   const [error, setError] = useState('');
 
   const pricingPlan = {
-    name: "Unlimited",
+    name: "Digit Fun Unlimited",
     amount: 2.99,
-    priceId: "price_1Rp0nHIa1WstuQNe3aRfnIj1",
-    paymentLink: "https://buy.stripe.com/4gMcN5cJ46hqdmS0q01RC01",
+    priceId: "price_1RrpWZIa1WstuQNegxLurhIY",
+    paymentLink: "https://buy.stripe.com/cNi6oHgZkbBKfv05Kk1RC04",
     currency: "usd",
     interval: "month"
   };
@@ -40,21 +40,9 @@ const PricingModal = ({ isOpen, onClose, onSubscribe, subscription }) => {
   };
 
   const features = [
-    {
-      icon: FiZap,
-      title: 'Unlimited Games',
-      description: 'Play all game modes without restrictions'
-    },
-    {
-      icon: FiStar,
-      title: 'All Features',
-      description: 'Access to current and future features'
-    },
-    {
-      icon: FiShield,
-      title: 'Secure & Private',
-      description: 'Your data is always safe and private'
-    }
+    { icon: FiZap, title: 'Unlimited Games', description: 'Play all game modes without restrictions' },
+    { icon: FiStar, title: 'All Features', description: 'Access to current and future features' },
+    { icon: FiShield, title: 'Secure & Private', description: 'Your data is always safe and private' }
   ];
 
   if (!isOpen) return null;
@@ -83,7 +71,7 @@ const PricingModal = ({ isOpen, onClose, onSubscribe, subscription }) => {
             >
               <SafeIcon icon={FiX} size={20} className="text-white" />
             </button>
-            
+
             <motion.div
               className="w-16 h-16 bg-white bg-opacity-20 rounded-2xl flex items-center justify-center mx-auto mb-4"
               animate={{ rotate: [0, 10, -10, 0] }}
@@ -91,7 +79,7 @@ const PricingModal = ({ isOpen, onClose, onSubscribe, subscription }) => {
             >
               <SafeIcon icon={FiStar} size={32} className="text-white" />
             </motion.div>
-            
+
             <h2 className="text-3xl font-bold mb-2">Unlock Unlimited Fun!</h2>
             <p className="text-white text-opacity-90">
               Get unlimited access to all games
@@ -109,7 +97,7 @@ const PricingModal = ({ isOpen, onClose, onSubscribe, subscription }) => {
                 </div>
                 <p className="text-indigo-600 text-sm">Recurring monthly subscription</p>
               </div>
-              
+
               <p className="text-gray-600 mb-6">
                 Continue your phone number memorization journey with unlimited access to all games!
               </p>

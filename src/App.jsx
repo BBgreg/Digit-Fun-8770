@@ -11,6 +11,7 @@ import NumberForm from './components/forms/NumberForm';
 import GameSelection from './components/games/GameSelection';
 import NumberSelection from './components/games/NumberSelection';
 import GamePlay from './components/games/GamePlay';
+import PricingPage from './components/pricing/PricingPage';
 
 // Import your main stylesheet
 import './App.css';
@@ -30,7 +31,6 @@ function App() {
   const { user, navigateToScreen, clearNavigationTarget, loading, isAuthReady: authContextReady } = useAuth();
 
   // --- EFFECTS ---
-
   // Effect to sync the authentication readiness state from the context.
   useEffect(() => {
     if (authContextReady) {
@@ -59,14 +59,13 @@ function App() {
     }
   }, [user, navigateToScreen, isAuthReady, clearNavigationTarget, currentScreen]);
 
-
   /**
    * Handles manual navigation triggered by child components.
    */
   const handleNavigation = (screen, params = {}) => {
     console.log(`🧭 App: Manual navigation to: ${screen}`, params);
     setGameParams(params);
-    
+
     if (screen === 'edit-number') {
       setEditingNumber(params);
       setCurrentScreen('number-form');
@@ -78,64 +77,103 @@ function App() {
       setCurrentScreen(screen);
     }
   };
-  
-  // --- RENDER LOGIC ---
 
+  // --- RENDER LOGIC ---
   return (
     <div className="app">
       <AnimatePresence mode="wait">
         {/* Global Loading Screen */}
         {currentScreen === 'global-loading' && (
-          <motion.div key="global-loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+          <motion.div
+            key="global-loading"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
             <LoadingScreen />
           </motion.div>
         )}
 
         {/* Auth Screen */}
         {currentScreen === 'auth' && isAuthReady && !user && (
-          <motion.div key="auth" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+          <motion.div
+            key="auth"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
             <AuthScreen />
           </motion.div>
         )}
 
         {/* Dashboard */}
         {currentScreen === 'dashboard' && isAuthReady && user && (
-          <motion.div key="dashboard" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+          <motion.div
+            key="dashboard"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
             <Dashboard onNavigate={handleNavigation} />
           </motion.div>
         )}
 
         {/* Numbers List Screen */}
         {currentScreen === 'number-list' && isAuthReady && user && (
-          <motion.div key="number-list" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+          <motion.div
+            key="number-list"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
             <NumbersList onNavigate={handleNavigation} />
           </motion.div>
         )}
 
         {/* Number Form Screen */}
         {currentScreen === 'number-form' && isAuthReady && user && (
-          <motion.div key="number-form" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+          <motion.div
+            key="number-form"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
             <NumberForm onNavigate={handleNavigation} editingNumber={editingNumber} />
           </motion.div>
         )}
 
         {/* Game Selection Screen */}
         {currentScreen === 'game-selection' && isAuthReady && user && (
-          <motion.div key="game-selection" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+          <motion.div
+            key="game-selection"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
             <GameSelection onNavigate={handleNavigation} />
           </motion.div>
         )}
 
         {/* Number Selection Screen */}
         {currentScreen === 'number-selection' && isAuthReady && user && (
-          <motion.div key="number-selection" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+          <motion.div
+            key="number-selection"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
             <NumberSelection onNavigate={handleNavigation} gameMode={gameParams.gameMode} />
           </motion.div>
         )}
 
         {/* Game Play Screen */}
         {currentScreen === 'game-play' && isAuthReady && user && (
-          <motion.div key="game-play" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+          <motion.div
+            key="game-play"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
             <GamePlay
               onNavigate={handleNavigation}
               gameMode={gameParams.gameMode}
@@ -144,6 +182,18 @@ function App() {
               phoneNumberId={gameParams.phoneNumberId}
               phoneNumbers={gameParams.phoneNumbers}
             />
+          </motion.div>
+        )}
+
+        {/* Pricing Page */}
+        {currentScreen === 'pricing' && isAuthReady && user && (
+          <motion.div
+            key="pricing"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <PricingPage onNavigate={handleNavigation} />
           </motion.div>
         )}
       </AnimatePresence>
