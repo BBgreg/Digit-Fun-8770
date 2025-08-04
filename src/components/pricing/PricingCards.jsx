@@ -1,25 +1,31 @@
+// --- TEMPORARY DEBUGGING VERSION ---
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import SafeIcon from '../../common/SafeIcon';
 import * as FiIcons from 'react-icons/fi';
 import { useAuth } from '../../contexts/AuthContext';
-import { supabase } from '../../lib/supabase';
-import { loadStripe } from '@stripe/stripe-js'; // Import loadStripe at the top
 
 const { FiCheck, FiZap } = FiIcons;
-
-// Initialize Stripe outside of the component
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
 
 const PricingCards = ({ className = '' }) => {
   const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
 
+  // This function now just shows an alert for testing.
+  const handleUpgrade = () => {
+    setIsLoading(true);
+    if (!user) {
+      alert("Test: User not logged in.");
+      setIsLoading(false);
+      return;
+    }
+    alert(`Test successful for user: ${user.id}. The real Stripe code is currently disabled for debugging.`);
+    setIsLoading(false);
+  };
+
   const pricingPlan = {
     name: "Digit Fun Unlimited",
     amount: 2.99,
-    priceId: "price_1RrpWZIa1WstuQNegxLurhIY", // Use the Price ID for the checkout session
-    currency: "usd",
     interval: "month"
   };
 
@@ -31,38 +37,6 @@ const PricingCards = ({ className = '' }) => {
     "Advanced progress tracking"
   ];
 
-  const handleUpgrade = async () => {
-    setIsLoading(true);
-    if (!user) {
-      alert("You must be logged in to subscribe.");
-      setIsLoading(false);
-      return;
-    }
-
-    try {
-      const { data, error } = await supabase.functions.invoke('create-checkout-session', {
-        body: {
-          userId: user.id,
-          userEmail: user.email,
-          priceId: pricingPlan.priceId,
-          successUrl: `${window.location.origin}/dashboard?success=true`,
-          cancelUrl: window.location.href,
-        }
-      });
-
-      if (error) throw error;
-
-      // Use the pre-initialized stripePromise to redirect
-      const stripe = await stripePromise;
-      await stripe.redirectToCheckout({ sessionId: data.sessionId });
-
-    } catch (error) {
-      console.error('Error creating checkout session:', error);
-      alert(`Error: Could not initiate payment. ${error.message}`);
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   return (
     <div className={`max-w-md mx-auto ${className}`}>
@@ -113,7 +87,7 @@ const PricingCards = ({ className = '' }) => {
           whileHover={{ y: -2, scale: 1.02 }}
           whileTap={{ y: 0, scale: 0.98 }}
         >
-          {isLoading ? 'Processing...' : 'Upgrade Now'}
+          {isLoading ? 'Processing...' : 'Test Button'}
         </motion.button>
         <div className="text-center mt-4">
           <p className="text-white text-opacity-70 text-sm">
