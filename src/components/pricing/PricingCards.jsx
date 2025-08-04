@@ -1,16 +1,20 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import SafeIcon from '../../common/SafeIcon';
 import * as FiIcons from 'react-icons/fi';
+import { useAuth } from '../../contexts/AuthContext'; // 1. IMPORT: Get authentication context
+import { supabase } from '../../lib/supabase'; // 2. IMPORT: Get Supabase client
 
-const { FiCheck, FiStar, FiZap } = FiIcons;
+const { FiCheck, FiZap } = FiIcons;
 
-const PricingCards = ({ onSelectPlan, className = '' }) => {
+const PricingCards = ({ className = '' }) => {
+  const { user } = useAuth(); // 3. Get the logged-in user
+  const [isLoading, setIsLoading] = useState(false);
+
   const pricingPlan = {
     name: "Digit Fun Unlimited",
     amount: 2.99,
-    priceId: "price_1RrpWZIa1WstuQNegxLurhIY",
-    paymentLink: "https://buy.stripe.com/cNi6oHgZkbBKfv05Kk1RC04",
+    priceId: "price_1RrpWZIa1WstuQNegxLurhIY", // We'll use this Price ID now
     currency: "usd",
     interval: "month"
   };
@@ -23,8 +27,41 @@ const PricingCards = ({ onSelectPlan, className = '' }) => {
     "Advanced progress tracking"
   ];
 
-  const handleUpgrade = () => {
-    window.open(pricingPlan.paymentLink, '_blank');
+  // 4. REWRITTEN: This function now calls your Supabase Edge Function
+  const handleUpgrade = async () => {
+    setIsLoading(true);
+    if (!user) {
+      alert("You must be logged in to subscribe.");
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      // Call the Supabase function instead of using a static link
+      const { data, error } = await supabase.functions.invoke('create-checkout-session', {
+        body: {
+          userId: user.id,
+          userEmail: user.email,
+          priceId: pricingPlan.priceId,
+          successUrl: window.location.origin, // Or a dedicated success page
+          cancelUrl: window.location.origin,  // Or a dedicated cancellation page
+        }
+      });
+
+      if (error) {
+        throw error;
+      }
+      
+      // The function returns a Stripe Session ID, use it to redirect to checkout
+      const stripe = await import('@stripe/stripe-js').then(m => m.loadStripe(Deno.env.get('NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY')));
+      await stripe.redirectToCheckout({ sessionId: data.sessionId });
+
+    } catch (error) {
+      console.error('Error creating checkout session:', error);
+      alert('Error: Could not initiate payment.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -34,12 +71,9 @@ const PricingCards = ({ onSelectPlan, className = '' }) => {
         animate={{ opacity: 1, y: 0 }}
         className="bg-gradient-to-br from-purple-500 via-indigo-500 to-blue-500 p-8 rounded-3xl shadow-2xl text-white relative overflow-hidden"
       >
-        {/* Popular badge */}
         <div className="absolute -top-4 -right-4 bg-gradient-to-r from-yellow-400 to-orange-500 text-black px-6 py-2 rounded-full transform rotate-12 text-sm font-bold">
           Most Popular
         </div>
-
-        {/* Header */}
         <div className="text-center mb-8">
           <motion.div
             className="w-16 h-16 bg-white bg-opacity-20 rounded-2xl flex items-center justify-center mx-auto mb-4"
@@ -56,8 +90,6 @@ const PricingCards = ({ onSelectPlan, className = '' }) => {
           </div>
           <p className="text-white text-opacity-90">Unlimited memory training</p>
         </div>
-
-        {/* Features */}
         <div className="space-y-4 mb-8">
           {features.map((feature, index) => (
             <motion.div
@@ -74,18 +106,15 @@ const PricingCards = ({ onSelectPlan, className = '' }) => {
             </motion.div>
           ))}
         </div>
-
-        {/* CTA Button */}
         <motion.button
           onClick={handleUpgrade}
-          className="w-full bg-white text-indigo-600 py-4 rounded-2xl font-bold text-lg shadow-lg hover:shadow-xl transition-all"
+          disabled={isLoading} // Disable button while loading
+          className="w-full bg-white text-indigo-600 py-4 rounded-2xl font-bold text-lg shadow-lg hover:shadow-xl transition-all disabled:opacity-50"
           whileHover={{ y: -2, scale: 1.02 }}
           whileTap={{ y: 0, scale: 0.98 }}
         >
-          Upgrade Now
+          {isLoading ? 'Processing...' : 'Upgrade Now'}
         </motion.button>
-
-        {/* Security note */}
         <div className="text-center mt-4">
           <p className="text-white text-opacity-70 text-sm">
             Secure payment powered by Stripe
@@ -94,8 +123,6 @@ const PricingCards = ({ onSelectPlan, className = '' }) => {
             Cancel anytime • No hidden fees
           </p>
         </div>
-
-        {/* Background decoration */}
         <div className="absolute -bottom-4 -left-4 w-24 h-24 bg-white bg-opacity-10 rounded-full"></div>
         <div className="absolute -top-8 -right-8 w-32 h-32 bg-white bg-opacity-5 rounded-full"></div>
       </motion.div>
