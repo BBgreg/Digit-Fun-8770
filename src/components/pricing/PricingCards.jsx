@@ -2,19 +2,23 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import SafeIcon from '../../common/SafeIcon';
 import * as FiIcons from 'react-icons/fi';
-import { useAuth } from '../../contexts/AuthContext'; // 1. IMPORT: Get authentication context
-import { supabase } from '../../lib/supabase'; // 2. IMPORT: Get Supabase client
+import { useAuth } from '../../contexts/AuthContext';
+import { supabase } from '../../lib/supabase';
+import { loadStripe } from '@stripe/stripe-js'; // Import loadStripe at the top
 
 const { FiCheck, FiZap } = FiIcons;
 
+// Initialize Stripe outside of the component
+const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
+
 const PricingCards = ({ className = '' }) => {
-  const { user } = useAuth(); // 3. Get the logged-in user
+  const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
 
   const pricingPlan = {
     name: "Digit Fun Unlimited",
     amount: 2.99,
-    priceId: "price_1RrpWZIa1WstuQNegxLurhIY", // We'll use this Price ID now
+    priceId: "price_1RrpWZIa1WstuQNegxLurhIY", // Use the Price ID for the checkout session
     currency: "usd",
     interval: "month"
   };
@@ -27,7 +31,6 @@ const PricingCards = ({ className = '' }) => {
     "Advanced progress tracking"
   ];
 
-  // 4. REWRITTEN: This function now calls your Supabase Edge Function
   const handleUpgrade = async () => {
     setIsLoading(true);
     if (!user) {
@@ -37,28 +40,25 @@ const PricingCards = ({ className = '' }) => {
     }
 
     try {
-      // Call the Supabase function instead of using a static link
       const { data, error } = await supabase.functions.invoke('create-checkout-session', {
         body: {
           userId: user.id,
           userEmail: user.email,
           priceId: pricingPlan.priceId,
-          successUrl: window.location.origin, // Or a dedicated success page
-          cancelUrl: window.location.origin,  // Or a dedicated cancellation page
+          successUrl: `${window.location.origin}/dashboard?success=true`,
+          cancelUrl: window.location.href,
         }
       });
 
-      if (error) {
-        throw error;
-      }
-      
-      // The function returns a Stripe Session ID, use it to redirect to checkout
-      const stripe = await import('@stripe/stripe-js').then(m => m.loadStripe(Deno.env.get('NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY')));
+      if (error) throw error;
+
+      // Use the pre-initialized stripePromise to redirect
+      const stripe = await stripePromise;
       await stripe.redirectToCheckout({ sessionId: data.sessionId });
 
     } catch (error) {
       console.error('Error creating checkout session:', error);
-      alert('Error: Could not initiate payment.');
+      alert(`Error: Could not initiate payment. ${error.message}`);
     } finally {
       setIsLoading(false);
     }
@@ -108,7 +108,7 @@ const PricingCards = ({ className = '' }) => {
         </div>
         <motion.button
           onClick={handleUpgrade}
-          disabled={isLoading} // Disable button while loading
+          disabled={isLoading}
           className="w-full bg-white text-indigo-600 py-4 rounded-2xl font-bold text-lg shadow-lg hover:shadow-xl transition-all disabled:opacity-50"
           whileHover={{ y: -2, scale: 1.02 }}
           whileTap={{ y: 0, scale: 0.98 }}
