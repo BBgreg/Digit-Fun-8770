@@ -7,7 +7,7 @@ import SubscriptionStatus from '../subscription/SubscriptionStatus';
 import PricingModal from '../subscription/PricingModal';
 import * as FiIcons from 'react-icons/fi';
 
-const { FiPlus, FiList, FiLogOut, FiShield, FiTarget, FiPuzzle, FiCircle, FiFilter, FiExternalLink, FiStar, FiLock, FiCreditCard } = FiIcons;
+const { FiPlus, FiList, FiLogOut, FiShield, FiTarget, FiPuzzle, FiCircle, FiFilter, FiExternalLink, FiStar, FiLock } = FiIcons;
 
 const Dashboard = ({ onNavigate }) => {
   const { user, signOut } = useAuth();
@@ -16,10 +16,10 @@ const Dashboard = ({ onNavigate }) => {
   const [showPricingModal, setShowPricingModal] = useState(false);
 
   const pricingPlan = {
-    name: "Digit Fun Unlimited",
+    name: "Unlimited",
     amount: 2.99,
-    priceId: "price_1RrpWZIa1WstuQNegxLurhIY",
-    paymentLink: "https://buy.stripe.com/cNi6oHgZkbBKfv05Kk1RC04",
+    priceId: "price_1Rp0nHIa1WstuQNe3aRfnIj1",
+    paymentLink: "https://buy.stripe.com/4gMcN5cJ46hqdmS0q01RC01",
     currency: "usd",
     interval: "month"
   };
@@ -86,6 +86,7 @@ const Dashboard = ({ onNavigate }) => {
           <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-indigo-500 to-blue-500 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob animation-delay-2000"></div>
           <div className="absolute bottom-0 left-20 w-96 h-96 bg-gradient-to-br from-blue-400 to-sky-500 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob animation-delay-4000"></div>
         </div>
+        
         <div className="text-center relative z-10">
           <motion.div
             className="w-16 h-16 border-4 border-indigo-200 border-t-indigo-500 rounded-full mx-auto mb-6"
@@ -157,8 +158,7 @@ const Dashboard = ({ onNavigate }) => {
           >
             <span className="text-4xl animate-bounce-slow">📱</span>
           </motion.div>
-
-          <h1
+          <h1 
             className="gradient-text app-title text-5xl font-black mb-4"
             style={{
               background: "linear-gradient(135deg, #9333EA, #4F46E5, #3B82F6)",
@@ -166,13 +166,12 @@ const Dashboard = ({ onNavigate }) => {
               WebkitTextFillColor: "transparent",
               backgroundClip: "text",
               textShadow: "0 0 20px rgba(147,51,234,0.5)",
-              fontFamily: "'Fredoka', sans-serif"
+              fontFamily: "'Fredoka', sans-serif",
             }}
           >
             Digit Fun
           </h1>
-
-          <p
+          <p 
             className="gradient-text app-tagline text-xl font-bold"
             style={{
               background: "linear-gradient(135deg, #9333EA, #4F46E5, #3B82F6)",
@@ -273,7 +272,7 @@ const Dashboard = ({ onNavigate }) => {
           </h2>
           <div className="h-1 w-24 bg-gradient-to-r from-indigo-500 to-purple-500 mx-auto mt-2 rounded-full"></div>
         </motion.div>
-
+        
         <motion.div
           initial={{ opacity: 0, y: 40 }}
           animate={{ opacity: 1, y: 0 }}
@@ -289,7 +288,9 @@ const Dashboard = ({ onNavigate }) => {
             return (
               <motion.div
                 key={game.id}
-                className={`group relative overflow-hidden rounded-3xl shadow-lg cursor-pointer transform transition-all duration-300 ${!canPlay && !isActive ? 'opacity-60' : ''}`}
+                className={`group relative overflow-hidden rounded-3xl shadow-lg cursor-pointer transform transition-all duration-300 ${
+                  !canPlay && !isActive ? 'opacity-60' : ''
+                }`}
                 style={{
                   background: "linear-gradient(to right, rgba(139,92,246,0.15), rgba(236,72,153,0.15))",
                   padding: "3px"
@@ -299,7 +300,9 @@ const Dashboard = ({ onNavigate }) => {
                   scale: canPlay || isActive ? 1.02 : 1,
                   boxShadow: canPlay || isActive ? "0 15px 30px rgba(139,92,246,0.3)" : "none"
                 }}
-                whileTap={{ scale: canPlay || isActive ? 0.98 : 1 }}
+                whileTap={{
+                  scale: canPlay || isActive ? 0.98 : 1
+                }}
                 onClick={() => {
                   if (canPlay || isActive) {
                     onNavigate(game.navTarget, { gameMode: game.id });
@@ -373,31 +376,6 @@ const Dashboard = ({ onNavigate }) => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.7 }}
-          className="flex justify-center mb-10"
-        >
-          <motion.button
-            onClick={() => onNavigate('pricing')}
-            className="group relative overflow-hidden bg-gradient-to-r from-violet-500 via-indigo-500 to-blue-500 px-8 py-4 rounded-2xl shadow-lg hover:shadow-xl transition-all"
-            whileHover={{
-              scale: 1.05,
-              y: -5,
-              boxShadow: "0 15px 30px rgba(124,58,237,0.3), 0 0 0 1px rgba(255,255,255,0.1)"
-            }}
-            whileTap={{ scale: 0.98 }}
-          >
-            <div className="absolute inset-0 bg-gradient-to-r from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-            <div className="relative flex items-center justify-center gap-3 text-white font-semibold">
-              <SafeIcon icon={FiCreditCard} size={20} className="text-white" />
-              <span className="text-lg">View Pricing Plans</span>
-            </div>
-            <div className="absolute inset-0 -z-10 rounded-2xl bg-white/10 opacity-0 blur-xl transition-opacity duration-500 group-hover:opacity-100"></div>
-          </motion.button>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.8 }}
           className="flex justify-center mb-10"
         >
           <motion.a
