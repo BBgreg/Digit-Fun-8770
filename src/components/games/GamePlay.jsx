@@ -1,6 +1,5 @@
 import React from 'react';
 import { useGameProgress } from '../../hooks/useGameProgress';
-import { useSubscription } from '../../hooks/useSubscription'; // 1. Import the hook
 import GameAccessControl from './GameAccessControl';
 import SequenceRiddle from './SequenceRiddle';
 import Speed5 from './Speed5';
@@ -9,18 +8,14 @@ import OddOneOut from './OddOneOut';
 
 const GamePlay = ({ onNavigate, gameMode, targetNumber, contactName, phoneNumberId, phoneNumbers }) => {
   const { saveGameResult } = useGameProgress();
-  // 2. Get the increment function from our subscription hook
-  const { incrementGameModeUsage } = useSubscription();
 
   /**
    * This function is called when any game is completed.
-   * It will now increment the usage counter before navigating back to the dashboard.
+   * Simplified to just save the game result and navigate back to dashboard.
    */
   const handleGameEnd = async (stars, time = null) => {
     try {
-      // 3. Increment the usage for the specific game mode that was just played
-      console.log(`🚀 GamePlay: Game ended for mode: ${gameMode}. Incrementing usage.`);
-      await incrementGameModeUsage(gameMode);
+      console.log(`🚀 GamePlay: Game ended for mode: ${gameMode}`);
 
       if (phoneNumberId) {
         await saveGameResult(phoneNumberId, gameMode, stars, time);
@@ -31,7 +26,7 @@ const GamePlay = ({ onNavigate, gameMode, targetNumber, contactName, phoneNumber
       // Navigate back to dashboard after a short delay
       setTimeout(() => {
         onNavigate('dashboard');
-      }, 1500); // Shortened delay slightly
+      }, 1500);
     }
   };
 
@@ -51,10 +46,8 @@ const GamePlay = ({ onNavigate, gameMode, targetNumber, contactName, phoneNumber
       case 'speed-5':
         return <Speed5 onNavigate={onNavigate} phoneNumbers={phoneNumbers} onGameEnd={handleGameEnd} />;
       case 'word-search':
-        // This game might need the onGameEnd prop as well
         return <WordSearch onNavigate={onNavigate} onGameEnd={handleGameEnd} />;
       case 'odd-one-out':
-        // This game might need the onGameEnd prop as well
         return <OddOneOut onNavigate={onNavigate} phoneNumberId={phoneNumberId} onGameEnd={handleGameEnd} />;
       default:
         return (

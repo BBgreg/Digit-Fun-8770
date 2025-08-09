@@ -34,7 +34,12 @@ const NumberSelection = ({ onNavigate, gameMode }) => {
       phoneNumberId = selectedNumber.id;
     }
 
-    onNavigate('game-play', { gameMode, targetNumber, contactName, phoneNumberId });
+    onNavigate('game-play', {
+      gameMode,
+      targetNumber,
+      contactName,
+      phoneNumberId
+    });
   };
 
   const gameModeNames = {
@@ -71,10 +76,10 @@ const NumberSelection = ({ onNavigate, gameMode }) => {
                 {gameModeNames[gameMode]}
               </h1>
               <p className="text-indigo-600 mt-1">
-                {gameMode === 'speed-5' ? 'Get ready to type 5 numbers as fast as you can'
-                  : gameMode === 'odd-one-out' ? 'Find the fake numbers that don\'t belong in your contacts'
-                  : gameMode === 'word-search' ? 'Find hidden phone numbers in a grid of digits'
-                  : 'Choose a number to practice with'}
+                {gameMode === 'speed-5' ? 'Get ready to type 5 numbers as fast as you can' :
+                 gameMode === 'odd-one-out' ? 'Find the fake numbers that don\'t belong in your contacts' :
+                 gameMode === 'word-search' ? 'Find hidden phone numbers in a grid of digits' :
+                 'Choose a number to practice with'}
               </p>
             </div>
           </motion.div>
@@ -87,25 +92,24 @@ const NumberSelection = ({ onNavigate, gameMode }) => {
               className="text-center py-12"
             >
               <div className={`w-24 h-24 ${
-                gameMode === 'odd-one-out' ? 'bg-gradient-to-br from-orange-500 to-red-500'
-                : gameMode === 'word-search' ? 'bg-gradient-to-br from-green-500 to-emerald-500'
-                : 'bg-gradient-to-br from-blue-500 to-cyan-500'
+                gameMode === 'odd-one-out' ? 'bg-gradient-to-br from-orange-500 to-red-500' :
+                gameMode === 'word-search' ? 'bg-gradient-to-br from-green-500 to-emerald-500' :
+                'bg-gradient-to-br from-blue-500 to-cyan-500'
               } rounded-full flex items-center justify-center mx-auto mb-8 shadow-lg`}>
                 <SafeIcon icon={FiPlay} size={40} className="text-white" />
               </div>
-              
               <h2 className="text-2xl font-bold text-indigo-800 mb-4">
-                {gameMode === 'odd-one-out' ? 'Odd One Out Challenge'
-                  : gameMode === 'word-search' ? 'Word Search Challenge'
-                  : 'Speed 5 Challenge'}
+                {gameMode === 'odd-one-out' ? 'Odd One Out Challenge' :
+                 gameMode === 'word-search' ? 'Word Search Challenge' :
+                 'Speed 5 Challenge'}
               </h2>
-              
               <p className="text-indigo-600 mb-8 max-w-md mx-auto">
-                {gameMode === 'odd-one-out' ? 'Find the fake numbers that don\'t match your saved contacts. Test your memory and attention to detail!'
-                  : gameMode === 'word-search' ? 'Find your phone numbers hidden in a grid of digits. Connect adjacent digits to form complete numbers!'
-                  : 'You\'ll be presented with 5 of your saved contacts. Type their numbers as fast as you can to earn stars!'}
+                {gameMode === 'odd-one-out' ? 
+                  'Find the fake numbers that don\'t match your saved contacts. Test your memory and attention to detail!' :
+                 gameMode === 'word-search' ? 
+                  'Find your phone numbers hidden in a grid of digits. Connect adjacent digits to form complete numbers!' :
+                  'You\'ll be presented with 5 of your saved contacts. Type their numbers as fast as you can to earn stars!'}
               </p>
-              
               <motion.button
                 onClick={handleStartGame}
                 disabled={phoneNumbers.length === 0}
@@ -116,7 +120,6 @@ const NumberSelection = ({ onNavigate, gameMode }) => {
                 <SafeIcon icon={FiPlay} size={20} />
                 Start Challenge
               </motion.button>
-
               {phoneNumbers.length === 0 && (
                 <p className="text-red-500 mt-4">You need to add at least one phone number first</p>
               )}

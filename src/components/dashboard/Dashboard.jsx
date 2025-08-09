@@ -1,41 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useAuth } from '../../contexts/AuthContext';
-import { useSubscription } from '../../hooks/useSubscription';
-import SafeIcon from '../../common/SafeIcon';
 import SubscriptionStatus from '../subscription/SubscriptionStatus';
-import PricingModal from '../subscription/PricingModal';
+import SafeIcon from '../../common/SafeIcon';
 import * as FiIcons from 'react-icons/fi';
 
-const { FiPlus, FiList, FiLogOut, FiShield, FiTarget, FiPuzzle, FiCircle, FiFilter, FiExternalLink, FiStar, FiLock } = FiIcons;
+const { FiPlus, FiList, FiLogOut, FiShield, FiTarget, FiPuzzle, FiCircle, FiFilter, FiExternalLink } = FiIcons;
 
 const Dashboard = ({ onNavigate }) => {
   const { user, signOut } = useAuth();
-  // We get the 'loading' state directly from our hook.
-  const { subscription, userProfile, canPlayGameMode, getRemainingUsesForGameMode, loading } = useSubscription();
-  const [showPricingModal, setShowPricingModal] = useState(false);
-
-  const pricingPlan = {
-    name: "Unlimited",
-    amount: 2.99,
-    priceId: "price_1Rp0nHIa1WstuQNe3aRfnIj1",
-    paymentLink: "https://buy.stripe.com/4gMcN5cJ46hqdmS0q01RC01",
-    currency: "usd",
-    interval: "month"
-  };
 
   const handleSignOut = async () => {
     await signOut();
-  };
-
-  const handleSubscribe = async () => {
-    try {
-      console.log('💳 Dashboard: Opening Stripe payment link for user:', user.id);
-      window.open(pricingPlan.paymentLink, '_blank');
-    } catch (error) {
-      console.error('❌ Dashboard: Subscription error:', error);
-      throw error;
-    }
   };
 
   const gameModesWithUsage = [
@@ -73,34 +49,6 @@ const Dashboard = ({ onNavigate }) => {
     }
   ];
 
-  /**
-   * FINAL FIX: We now check the `loading` state from the useSubscription hook directly.
-   * This removes the extra layer of state and ensures the dashboard renders as soon as
-   * the data is available.
-   */
-  if (loading) {
-    return (
-      <div className="min-h-screen app-container flex items-center justify-center">
-        <div className="absolute top-0 left-0 w-full h-full overflow-hidden z-0">
-          <div className="absolute top-0 left-0 w-96 h-96 bg-gradient-to-br from-purple-500 to-indigo-500 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob"></div>
-          <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-indigo-500 to-blue-500 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob animation-delay-2000"></div>
-          <div className="absolute bottom-0 left-20 w-96 h-96 bg-gradient-to-br from-blue-400 to-sky-500 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob animation-delay-4000"></div>
-        </div>
-        
-        <div className="text-center relative z-10">
-          <motion.div
-            className="w-16 h-16 border-4 border-indigo-200 border-t-indigo-500 rounded-full mx-auto mb-6"
-            animate={{ rotate: 360 }}
-            transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-          />
-          <p className="text-indigo-600 text-xl font-semibold">Loading your dashboard...</p>
-          <p className="text-indigo-500 text-sm mt-2">Setting up your personalized experience</p>
-        </div>
-      </div>
-    );
-  }
-
-  // The main dashboard content will now render correctly once loading is false.
   return (
     <div className="min-h-screen app-container">
       <div className="absolute top-0 left-0 w-full h-full overflow-hidden z-0">
@@ -139,7 +87,7 @@ const Dashboard = ({ onNavigate }) => {
           transition={{ delay: 0.1 }}
           className="flex justify-center mb-8"
         >
-          <SubscriptionStatus subscription={subscription} userProfile={userProfile} />
+          <SubscriptionStatus />
         </motion.div>
 
         <motion.div
@@ -279,98 +227,42 @@ const Dashboard = ({ onNavigate }) => {
           transition={{ delay: 0.6 }}
           className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto mb-12"
         >
-          {gameModesWithUsage.map((game) => {
-            const canPlay = canPlayGameMode(game.id);
-            const remainingUses = getRemainingUsesForGameMode(game.id);
-            const isActive = subscription?.subscription_status === 'active';
-            const usedUses = 2 - remainingUses;
-
-            return (
-              <motion.div
-                key={game.id}
-                className={`group relative overflow-hidden rounded-3xl shadow-lg cursor-pointer transform transition-all duration-300 ${
-                  !canPlay && !isActive ? 'opacity-60' : ''
-                }`}
-                style={{
-                  background: "linear-gradient(to right, rgba(139,92,246,0.15), rgba(236,72,153,0.15))",
-                  padding: "3px"
-                }}
-                whileHover={{
-                  y: canPlay || isActive ? -5 : 0,
-                  scale: canPlay || isActive ? 1.02 : 1,
-                  boxShadow: canPlay || isActive ? "0 15px 30px rgba(139,92,246,0.3)" : "none"
-                }}
-                whileTap={{
-                  scale: canPlay || isActive ? 0.98 : 1
-                }}
-                onClick={() => {
-                  if (canPlay || isActive) {
-                    onNavigate(game.navTarget, { gameMode: game.id });
-                  }
-                }}
-              >
-                <div className={`${game.color} h-full w-full rounded-3xl p-6 relative`}>
-                  {!canPlay && !isActive && (
-                    <div className="absolute inset-0 bg-black bg-opacity-50 rounded-3xl flex items-center justify-center">
-                      <div className="text-center">
-                        <SafeIcon icon={FiLock} size={32} className="text-white mb-2 mx-auto" />
-                        <p className="text-white text-sm font-semibold">Upgrade to Play</p>
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="flex items-center gap-4 mb-3">
-                    <motion.div
-                      className="w-12 h-12 bg-white bg-opacity-20 backdrop-filter backdrop-blur-lg rounded-xl flex items-center justify-center"
-                      whileHover={{ rotate: 180 }}
-                      transition={{ duration: 0.5 }}
-                    >
-                      <SafeIcon icon={game.icon} size={24} className="text-white" />
-                    </motion.div>
-                    <div className="flex-1">
-                      <h3 className="text-xl font-bold text-white">{game.name}</h3>
-                      {subscription?.subscription_status === 'free_trial' && (
-                        <div className="text-white text-opacity-80 text-sm">
-                          {isActive ? 'Unlimited' : `${usedUses}/2 plays used`}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  <p className="text-white text-opacity-90">
-                    {game.description}
-                  </p>
-                </div>
-              </motion.div>
-            );
-          })}
-        </motion.div>
-
-        {subscription?.subscription_status === 'free_trial' && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.7 }}
-            className="flex justify-center mb-10"
-          >
-            <motion.button
-              onClick={() => setShowPricingModal(true)}
-              className="group relative overflow-hidden bg-gradient-to-r from-violet-500 via-indigo-500 to-blue-500 px-8 py-4 rounded-2xl shadow-lg hover:shadow-xl transition-all"
+          {gameModesWithUsage.map((game) => (
+            <motion.div
+              key={game.id}
+              className="group relative overflow-hidden rounded-3xl shadow-lg cursor-pointer transform transition-all duration-300"
+              style={{
+                background: "linear-gradient(to right, rgba(139,92,246,0.15), rgba(236,72,153,0.15))",
+                padding: "3px"
+              }}
               whileHover={{
-                scale: 1.05,
                 y: -5,
-                boxShadow: "0 15px 30px rgba(124,58,237,0.3), 0 0 0 1px rgba(255,255,255,0.1)"
+                scale: 1.02,
+                boxShadow: "0 15px 30px rgba(139,92,246,0.3)"
               }}
               whileTap={{ scale: 0.98 }}
+              onClick={() => onNavigate(game.navTarget, { gameMode: game.id })}
             >
-              <div className="absolute inset-0 bg-gradient-to-r from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-              <div className="relative flex items-center justify-center gap-3 text-white font-semibold">
-                <SafeIcon icon={FiStar} size={20} className="text-white" />
-                <span className="text-lg">Upgrade to Unlimited - $2.99/month</span>
+              <div className={`${game.color} h-full w-full rounded-3xl p-6 relative`}>
+                <div className="flex items-center gap-4 mb-3">
+                  <motion.div
+                    className="w-12 h-12 bg-white bg-opacity-20 backdrop-filter backdrop-blur-lg rounded-xl flex items-center justify-center"
+                    whileHover={{ rotate: 180 }}
+                    transition={{ duration: 0.5 }}
+                  >
+                    <SafeIcon icon={game.icon} size={24} className="text-white" />
+                  </motion.div>
+                  <div className="flex-1">
+                    <h3 className="text-xl font-bold text-white">{game.name}</h3>
+                  </div>
+                </div>
+                <p className="text-white text-opacity-90">
+                  {game.description}
+                </p>
               </div>
-              <div className="absolute inset-0 -z-10 rounded-2xl bg-white/10 opacity-0 blur-xl transition-opacity duration-500 group-hover:opacity-100"></div>
-            </motion.button>
-          </motion.div>
-        )}
+            </motion.div>
+          ))}
+        </motion.div>
 
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -399,13 +291,6 @@ const Dashboard = ({ onNavigate }) => {
           </motion.a>
         </motion.div>
       </div>
-
-      <PricingModal
-        isOpen={showPricingModal}
-        onClose={() => setShowPricingModal(false)}
-        onSubscribe={handleSubscribe}
-        subscription={subscription}
-      />
     </div>
   );
 };
