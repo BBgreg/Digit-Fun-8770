@@ -1,165 +1,62 @@
+// src/App.jsx
 import React, { useState, useEffect } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
+import { GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "firebase/auth";
+import { auth } from './firebaseConfig'; // Import our configured auth instance
+import './App.css'; // Assuming you have this file for styling
 
-// Import your context and components
-import { AuthProvider, useAuth } from './contexts/AuthContext';
-import AuthScreen from './components/auth/AuthScreen.jsx';
-import LoadingScreen from './components/LoadingScreen.jsx';
-import Dashboard from './components/dashboard/Dashboard';
-import NumbersList from './components/dashboard/NumbersList';
-import NumberForm from './components/forms/NumberForm';
-import GameSelection from './components/games/GameSelection';
-import NumberSelection from './components/games/NumberSelection';
-import GamePlay from './components/games/GamePlay';
-
-// Import your main stylesheet
-import './App.css';
-
-/**
- * The main App component handles all routing and state management for the application.
- * It determines which screen to show based on authentication status and user actions.
- */
 function App() {
-  // --- STATE MANAGEMENT ---
-  const [currentScreen, setCurrentScreen] = useState('global-loading');
-  const [isAuthReady, setIsAuthReady] = useState(false);
-  const [gameParams, setGameParams] = useState({});
-  const [editingNumber, setEditingNumber] = useState(null);
+  const [user, setUser] = useState(null); // State to hold the logged-in user object
 
-  // --- AUTHENTICATION CONTEXT ---
-  const { user, navigateToScreen, clearNavigationTarget, loading, isAuthReady: authContextReady } = useAuth();
-
-  // --- EFFECTS ---
-
-  // Effect to sync the authentication readiness state from the context.
+  // Listen for authentication state changes
   useEffect(() => {
-    if (authContextReady) {
-      setIsAuthReady(true);
-    }
-  }, [authContextReady]);
-
-  // Main navigation logic
-  useEffect(() => {
-    if (isAuthReady) {
-      if (navigateToScreen) {
-        setCurrentScreen(navigateToScreen);
-        clearNavigationTarget();
-        return;
-      }
-
-      if (user) {
-        if (currentScreen === 'auth' || currentScreen === 'global-loading') {
-          setCurrentScreen('dashboard');
-        }
-      } else {
-        if (currentScreen !== 'auth') {
-          setCurrentScreen('auth');
-        }
-      }
-    }
-  }, [user, navigateToScreen, isAuthReady, clearNavigationTarget, currentScreen]);
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+    });
+    // Cleanup subscription on unmount
+    return () => unsubscribe();
+  }, []);
 
 
-  /**
-   * Handles manual navigation triggered by child components.
-   */
-  const handleNavigation = (screen, params = {}) => {
-    console.log(`🧭 App: Manual navigation to: ${screen}`, params);
-    setGameParams(params);
-    
-    if (screen === 'edit-number') {
-      setEditingNumber(params);
-      setCurrentScreen('number-form');
-    } else if (screen === 'add-number') {
-      setEditingNumber(null);
-      setCurrentScreen('number-form');
-    } else {
-      setEditingNumber(null);
-      setCurrentScreen(screen);
-    }
+  const handleGoogleSignIn = () => {
+    const provider = new GoogleAuthProvider();
+    signInWithPopup(auth, provider)
+      .then((result) => {
+        const user = result.user;
+        console.log("Welcome!", user.displayName);
+      }).catch((error) => {
+        console.error("Authentication error:", error);
+      });
   };
-  
-  // --- RENDER LOGIC ---
+
+  const handleSignOut = () => {
+    signOut(auth).then(() => {
+      console.log("User signed out.");
+    }).catch((error) => {
+      console.error("Sign out error:", error);
+    });
+  };
 
   return (
-    <div className="app">
-      <AnimatePresence mode="wait">
-        {/* Global Loading Screen */}
-        {currentScreen === 'global-loading' && (
-          <motion.div key="global-loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-            <LoadingScreen />
-          </motion.div>
+    <div className="App">
+      <header className="App-header">
+        <h1>Digit Fun</h1>
+        {user ? (
+          <div>
+            <p>Welcome, {user.displayName}!</p>
+            <p>({user.email})</p>
+            <button onClick={handleSignOut}>Sign Out</button>
+          </div>
+        ) : (
+          <button onClick={handleGoogleSignIn}>Sign in with Google</button>
         )}
+        
+        <hr />
 
-        {/* Auth Screen */}
-        {currentScreen === 'auth' && isAuthReady && !user && (
-          <motion.div key="auth" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-            <AuthScreen />
-          </motion.div>
-        )}
-
-        {/* Dashboard */}
-        {currentScreen === 'dashboard' && isAuthReady && user && (
-          <motion.div key="dashboard" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-            <Dashboard onNavigate={handleNavigation} />
-          </motion.div>
-        )}
-
-        {/* Numbers List Screen */}
-        {currentScreen === 'number-list' && isAuthReady && user && (
-          <motion.div key="number-list" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-            <NumbersList onNavigate={handleNavigation} />
-          </motion.div>
-        )}
-
-        {/* Number Form Screen */}
-        {currentScreen === 'number-form' && isAuthReady && user && (
-          <motion.div key="number-form" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-            <NumberForm onNavigate={handleNavigation} editingNumber={editingNumber} />
-          </motion.div>
-        )}
-
-        {/* Game Selection Screen */}
-        {currentScreen === 'game-selection' && isAuthReady && user && (
-          <motion.div key="game-selection" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-            <GameSelection onNavigate={handleNavigation} />
-          </motion.div>
-        )}
-
-        {/* Number Selection Screen */}
-        {currentScreen === 'number-selection' && isAuthReady && user && (
-          <motion.div key="number-selection" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-            <NumberSelection onNavigate={handleNavigation} gameMode={gameParams.gameMode} />
-          </motion.div>
-        )}
-
-        {/* Game Play Screen */}
-        {currentScreen === 'game-play' && isAuthReady && user && (
-          <motion.div key="game-play" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-            <GamePlay
-              onNavigate={handleNavigation}
-              gameMode={gameParams.gameMode}
-              targetNumber={gameParams.targetNumber}
-              contactName={gameParams.contactName}
-              phoneNumberId={gameParams.phoneNumberId}
-              phoneNumbers={gameParams.phoneNumbers}
-            />
-          </motion.div>
-        )}
-      </AnimatePresence>
+        {/* Your Game Modes would go here */}
+        
+      </header>
     </div>
   );
 }
 
-/**
- * A wrapper component that provides the AuthContext to the main App.
- */
-const AppWithAuth = () => {
-  return (
-    <AuthProvider>
-      <App />
-    </AuthProvider>
-  );
-};
-
-export default AppWithAuth;
+export default App;
